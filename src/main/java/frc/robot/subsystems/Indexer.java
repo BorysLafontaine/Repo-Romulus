@@ -6,6 +6,7 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.hardware.TalonFX;
 
+import frc.robot.generated.Constants;
 import frc.robot.generated.Constants.*;
 
 
@@ -21,7 +22,7 @@ public class Indexer extends SubsystemBase {
   }
 
   public void spinIndexer(){
-    m_IndexerMotor.set(RobotConstants.IndexSpeed);
+    m_IndexerMotor.set(Constants.RobotConstants.IndexSpeed);
   }
 
   public void stopIndexer(){
