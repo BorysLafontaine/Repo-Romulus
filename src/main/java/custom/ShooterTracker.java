@@ -6,8 +6,9 @@ public class ShooterTracker {
     private static final double HUB_X = 182.11;
     private static final double HUB_Y = 158.84;
     
-    // Limite de rotation maximale : ±π radians (±180°) pour éviter d'enrouler les câbles
-    private static final double MAX_ROTATION = Math.PI;
+    // Limites de rotation : max = π/2 radians (90°), min = -3π/2 radians (-270°)
+    private static final double MAX_ROTATION = Math.PI / 2;      // 90°
+    private static final double MIN_ROTATION = -3 * Math.PI / 2; // -270°
 
     /**
      * Décalage de la tourelle par rapport au centre du robot (en pouces).
@@ -32,7 +33,7 @@ public class ShooterTracker {
     public void update(double robotX, double robotY, double robotAngle) {
         
         // ── Si le robot dépasse le hub en X (+ 1 pouce), on ne traque pas ──
-        if (robotX > HUB_X + 1.0) {           
+        if (robotX > HUB_X + 0.5) {           
             System.out.println("too far hub — tracking deactivated");
             return;
         }
@@ -65,10 +66,10 @@ public class ShooterTracker {
             // Seule la direction arrière reste dans les limites
             currentRotation = projectedBackward;
         } else {
-            // Les deux directions dépassent la limite → aller vers celle qui reste la plus proche de 0
+            // Les deux directions dépassent la limite → rester le plus près possible des limites
             currentRotation = (Math.abs(projectedForward) < Math.abs(projectedBackward))
-                    ? Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, projectedForward))
-                    : Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, projectedBackward));
+                    ? Math.max(MIN_ROTATION, Math.min(MAX_ROTATION, projectedForward))
+                    : Math.max(MIN_ROTATION, Math.min(MAX_ROTATION, projectedBackward));
         }
 
         System.out.printf(
@@ -98,8 +99,8 @@ public class ShooterTracker {
     return delta - 2 * Math.PI * Math.round(delta / (2 * Math.PI));
     }
 
-    /** Retourne true si la rotation est dans les limites [-π, π]. */
+    /** Retourne true si la rotation est dans les limites [MIN_ROTATION, MAX_ROTATION]. */
     private boolean withinBounds(double rotation) {
-        return Math.abs(rotation) <= MAX_ROTATION;
+        return rotation >= MIN_ROTATION && rotation <= MAX_ROTATION;
     }
 }
