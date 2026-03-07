@@ -4,12 +4,16 @@
 
 package frc.robot.commands;
 
+import custom.deploy_intake;
 import edu.wpi.first.wpilibj2.command.Command;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
-public class deploy_retract extends Command {
+public class deploy_retract_command extends Command {
+  private final deploy_intake mIntake;
+
   /** Creates a new deploy_retract. */
-  public deploy_retract() {
+  public deploy_retract_command(deploy_intake pIntake) {
+    mIntake = pIntake;
     // Use addRequirements() here to declare subsystem dependencies.
   }
 
@@ -19,7 +23,9 @@ public class deploy_retract extends Command {
 
   // Called every time the scheduler runs while the command is scheduled.
   @Override
-  public void execute() {}
+  public void execute() {
+    mIntake.deploy_retract();
+  }
 
   // Called once the command ends or is interrupted.
   @Override

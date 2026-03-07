@@ -2,26 +2,22 @@ package custom;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class deploy_intake extends SubsystemBase{
+public class deploy_intake {
 
     private final DoubleSolenoid m_solenoid = new DoubleSolenoid(1, PneumaticsModuleType.REVPH, 1,0);
 
     // ─── État du système ─────────────────────────────────────────────────────
     private boolean isDeployed = false;
 
-    // 
-    public Command deploy_retract_button() {
-        return runOnce(() -> {
+    // ─── fonction du bouton ──────────────────────────────────────────────────
+    public void deploy_retract() {
             if (isDeployed) {
                 retract();
             } else {
                 deploy();
             }
-        });
-    }
+        }
 
     // ─── Déploiement ─────────────────────────────────────────────────────────
     private void deploy() {
