@@ -16,7 +16,7 @@ public class SSautoTrackTurret extends SubsystemBase {
   private static final double HUB_Y = 158.84;
   
   // Limite de rotation maximale : ±π radians (±180°) pour éviter d'enrouler les câbles
-  private static final double MAX_ROTATION = Math.PI;
+  private static final double MAX_ROTATION = Math.PI/2;
 
   /**
    * Décalage de la tourelle par rapport au centre du robot (en pouces).
@@ -35,7 +35,7 @@ public class SSautoTrackTurret extends SubsystemBase {
   public SSautoTrackTurret() {
 
     mShooterTracker.update(0, 0, 0);
-    mTurretRotationMotor = new TalonFX(10); // TODO: mettre le bon ID avec constant file
+    mTurretRotationMotor = new TalonFX(41);
   }
 
   @Override
@@ -96,8 +96,8 @@ public class SSautoTrackTurret extends SubsystemBase {
         }
 
         System.out.printf(
-            "Robot(%.2f, %.2f) | Tourelle(%.2f, %.2f) | Cible: %.4f rad | Rotation: %.4f rad%n",
-            robotX, robotY, turretX, turretY, target, currentRotation
+            "Robot(" + robotX + ", " + robotY + " ) | Tourelle(" + turretX + ", " + turretY + ") | Cible: " + target + "rad | Rotation: " + currentRotation + " rad\n"
+             
         );
     }
 
