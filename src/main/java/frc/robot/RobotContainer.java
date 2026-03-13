@@ -19,11 +19,10 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Indexer;
-// Intake imports
-import custom.deploy_intake;
 import frc.robot.commands.IndexerSpin_CMD;
-import frc.robot.commands.deploy_retract_command;
-//
+import frc.robot.subsystems.SS_Intake;
+import frc.robot.commands.toggle_intake_CMD;
+
 
 public class RobotContainer {
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
@@ -31,6 +30,9 @@ public class RobotContainer {
 
     private final Indexer mIndexer = new Indexer();
     private final IndexerSpin_CMD mIndexerSpin_CMD = new IndexerSpin_CMD(mIndexer);
+
+        private final SS_Intake mIntake = new SS_Intake();
+    private final toggle_intake_CMD mtoggle_intake_CMD = new toggle_intake_CMD(mIntake);
 
     /* Setting up bindings for necessary control of the swerve drive platform */
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -44,8 +46,6 @@ public class RobotContainer {
     private final CommandXboxController joystick = new CommandXboxController(0);
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-
-    public final deploy_intake intake = new deploy_intake();
 
     public RobotContainer() {
         configureBindings();
@@ -70,7 +70,7 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
         joystick.x().whileTrue(mIndexerSpin_CMD);
-        joystick.y().onTrue(new deploy_retract_command(intake));
+        joystick.y().onTrue(new toggle_intake_CMD(mIntake));
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
         joystick.b().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
