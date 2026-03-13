@@ -8,7 +8,7 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class deploy_intake extends SubsystemBase {
+public class SS_Intake extends SubsystemBase {
 
   private final DoubleSolenoid m_solenoid = new DoubleSolenoid(1, PneumaticsModuleType.REVPH, 1, 0);
   // État du système 
