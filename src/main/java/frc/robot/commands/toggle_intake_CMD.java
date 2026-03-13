@@ -5,13 +5,13 @@
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.deploy_intake;
+import frc.robot.subsystems.SS_Intake;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
 public class toggle_intake_CMD extends Command {
   /** Creates a new toggle_intake_CMD. */
-  private final deploy_intake mIntake;
-  public toggle_intake_CMD(deploy_intake pIntake) {
+  private final SS_Intake mIntake;
+  public toggle_intake_CMD(SS_Intake pIntake) {
     // Use addRequirements() here to declare subsystem dependencies.
     mIntake = pIntake;
   }
