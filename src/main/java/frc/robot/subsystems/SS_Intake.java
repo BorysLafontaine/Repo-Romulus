@@ -45,6 +45,6 @@ public class SS_Intake extends SubsystemBase {
 
   @Override
   public void periodic() {
-    //SmartDashboard.put
+    update();
   }
 }
