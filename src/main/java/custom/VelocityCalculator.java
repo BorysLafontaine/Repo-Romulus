@@ -13,6 +13,7 @@ package custom;
  */
 public class VelocityCalculator {
 
+    
     private static final double HUB_X = 182.11; // pouces
     private static final double HUB_Y = 158.84; // pouces
 
@@ -22,18 +23,17 @@ public class VelocityCalculator {
     /**
      * RPM maximum physique du moteur de tir.
      * Sert de garde-fou — VelocityCalculator ne retournera jamais au-delà.
-     * Ajuste selon ton moteur (ex: Falcon 500 ≈ 6380 RPM à vide).
      */
     private static final double MAX_RPM = 5600.0;
 
     // ── Table de calibration : { robotX, robotY, RPM mesurés à NOMINAL_VOLTAGE } ──
     // Mesures à prendre sur le vrai robot à différentes distances du hub.
     private static final double[][] DATA = {
-        {  50.0,  50.0, 5400.0 },  // proche du hub  → RPM élevé
+        {  50.0,  50.0, 5400.0 },  // proche du hub
         { 100.0,  80.0, 4800.0 },
         { 150.0, 120.0, 4100.0 },
         { 200.0, 160.0, 3500.0 },
-        { 250.0, 200.0, 3000.0 },  // loin du hub    → RPM plus bas
+        { 250.0, 200.0, 3000.0 },  // loin du hub
         // ⚠️  Remplacer par des mesures réelles sur le robot
     };
 

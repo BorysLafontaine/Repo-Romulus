@@ -1,9 +1,8 @@
 package custom;
 
-import krakenx60; // to fix
+// import krakenx60; // to fix
 import custom.ShooterTracker;
 import custom.VelocityCalculator;
-import custom.deploy_intake;
 /**
  * ShootAndScore — Orchestre le mode tir complet.
  *
@@ -29,7 +28,6 @@ import custom.deploy_intake;
 public class ShootAndScore {
 
     private TalonFX m_TalonFX;
-    private k
     public enum ShootState { IDLE, SPOOLING_UP, FIRING }
 
     /**
