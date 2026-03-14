@@ -5,19 +5,27 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.PneumaticHub;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_Intake extends SubsystemBase {
-
-  private final DoubleSolenoid m_solenoid = new DoubleSolenoid(1, PneumaticsModuleType.REVPH, 1, 0);
+  private final PneumaticHub m_pneumaticHub;
+  private final DoubleSolenoid m_solenoid;
   // État du système 
-  private Value deployedState = m_solenoid.get();
+  private Value deployedState ;
+  
+  /** create a new ss_intake */
+  public SS_Intake() {
+    m_solenoid = new DoubleSolenoid(1, PneumaticsModuleType.REVPH, 1, 0);
+    deployedState = m_solenoid.get();
+    m_pneumaticHub = new PneumaticHub(1);
+    m_pneumaticHub.enableCompressorDigital();
+  }
 
   public void deploy_retract() {
-
         if (deployedState == Value.kForward) {
             retract();
         } else if(deployedState == Value.kReverse){
