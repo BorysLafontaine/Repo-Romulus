@@ -6,40 +6,45 @@ package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_Intake extends SubsystemBase {
 
   private final DoubleSolenoid m_solenoid = new DoubleSolenoid(1, PneumaticsModuleType.REVPH, 1, 0);
   // État du système 
-  private boolean isDeployed = false;
+  private Value deployedState = m_solenoid.get();
 
   public void deploy_retract() {
-        if (isDeployed) {
+
+        if (deployedState == Value.kForward) {
             retract();
-        } else {
+        } else if(deployedState == Value.kReverse){
             deploy();
         }
     }
 
   // ─── Déploiement ─────────────────────────────────────────────────────────
   private void deploy() {
-      isDeployed = true;
+
       m_solenoid.set(DoubleSolenoid.Value.kForward);
       System.out.println(" intake DEPLOYED");
   }
 
   // ─── Rétractation ────────────────────────────────────────────────────────
   private void retract() {
-      isDeployed = false;
       m_solenoid.set(DoubleSolenoid.Value.kReverse);
       System.out.println(" intake RETRACTED");
   }
+  public void update(){
+    deployedState = m_solenoid.get();
+    SmartDashboard.putString("solenoid state" , deployedState.toString());
+  }
 
-  public boolean isDeployed(){ return isDeployed; }
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
+    //SmartDashboard.put
   }
 }
