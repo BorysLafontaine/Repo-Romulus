@@ -4,8 +4,11 @@
 
 package frc.robot.subsystems;
 
-import custom.ShooterTracker;
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.TalonFX;
+
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose2d.*;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 
@@ -29,19 +32,17 @@ public class SSautoTrackTurret extends SubsystemBase {
   // Rotation actuelle de la tourelle en radians, maintenue dans [-2π, 2π]
   private double currentRotation = 0.0;
   private final TalonFX mTurretRotationMotor;
-  private final ShooterTracker mShooterTracker = new ShooterTracker();
 
   /** Creates a new SSautoTrackTurret. */
   public SSautoTrackTurret() {
-
-    mShooterTracker.update(0, 0, 0);
     mTurretRotationMotor = new TalonFX(41);
   }
 
   @Override
   public void periodic() {
-    
-    mTurretRotationMotor.setPosition(null);
+    Pose2d mPosRobot = new Pose2d();
+    StatusSignal CurrentTurretAngle = mTurretRotationMotor.getPosition();
+    update(mPosRobot.getX(), mPosRobot.getY(), CurrentTurretAngle.getValueAsDouble());
   }
 
      // ── Mise à jour (à appeler à chaque cycle du robot) ──────────
@@ -50,10 +51,10 @@ public class SSautoTrackTurret extends SubsystemBase {
      * Met à jour la rotation de la tourelle pour viser le hub.
      * @param robotX     Position X du robot (centre du robot) en pouces.
      * @param robotY     Position Y du robot (centre du robot) en pouces.
-     * @param robotAngle Angle actuel du robot en radians (cap du robot sur le terrain),
+     * @param CurrentTurretAngle Angle actuel du robot en radians (cap du robot sur le terrain),
      *                   nécessaire pour convertir le décalage de la tourelle en coordonnées terrain.
      */
-    public void update(double robotX, double robotY, double robotAngle) {
+    public void update(double robotX, double robotY, double CurrentTurretAngle) {
         
         // ── Si le robot dépasse le hub en X (+ 1 pouce), on ne traque pas ──
         if (robotX > HUB_X + 0.5) {           
@@ -64,10 +65,10 @@ public class SSautoTrackTurret extends SubsystemBase {
         // ── Calcul de la position réelle de la tourelle sur le terrain ──
         // Le décalage est exprimé dans le repère du robot (avant/côté),
         // il faut le faire pivoter selon l'angle du robot pour l'exprimer en coordonnées terrain.
-        double turretX = robotX + TURRET_OFFSET_X * Math.cos(robotAngle)
-                                - TURRET_OFFSET_Y * Math.sin(robotAngle);
-        double turretY = robotY + TURRET_OFFSET_X * Math.sin(robotAngle)
-                                + TURRET_OFFSET_Y * Math.cos(robotAngle);
+        double turretX = robotX + TURRET_OFFSET_X * Math.cos(CurrentTurretAngle)
+                                - TURRET_OFFSET_Y * Math.sin(CurrentTurretAngle);
+        double turretY = robotY + TURRET_OFFSET_X * Math.sin(CurrentTurretAngle)
+                                + TURRET_OFFSET_Y * Math.cos(CurrentTurretAngle);
 
         // ── Calcul de l'angle cible depuis la tourelle (et non le centre du robot) ──
         double target = getAngleToHub(turretX, turretY);
