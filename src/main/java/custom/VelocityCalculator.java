@@ -34,7 +34,7 @@ public class VelocityCalculator {
         { 150.0, 120.0, 4100.0 },
         { 200.0, 160.0, 3500.0 },
         { 250.0, 200.0, 3000.0 },  // loin du hub
-        // ⚠️  Remplacer par des mesures réelles sur le robot
+        // TODO  Remplacer par des mesures réelles sur le robot
     };
 
     // Coefficients de la courbe v = a·d² + b·d + c (calculés une seule fois)

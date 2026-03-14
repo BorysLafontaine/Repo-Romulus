@@ -12,11 +12,10 @@ public class SS_Velocity_Calculator extends SubsystemBase {
   private static final double HUB_X = 182.11; // pouces
   private static final double HUB_Y = 158.84; // pouces
 
-  private final TalonFX mShoutingMotor;
 
   /** Creates a new SS_Velocity_Calculator. */
   public SS_Velocity_Calculator() {
-    mShoutingMotor = new TalonFX(xyz); // to fix
+  
   }
 
   @Override

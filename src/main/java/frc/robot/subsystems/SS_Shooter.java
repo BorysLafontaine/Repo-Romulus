@@ -12,21 +12,21 @@ import frc.robot.generated.Constants.*;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class Indexer extends SubsystemBase {
+public class SS_Shooter extends SubsystemBase {
 
-  private final TalonFX m_IndexerMotor;
+  private final TalonFX m_ShooterMotor;
 
   /** Creates a new Indexer. */
-  public Indexer() {
-    m_IndexerMotor = new TalonFX(30);
+  public SS_Shooter() {
+    m_ShooterMotor = new TalonFX(30);
   }
 
-  public void spinIndexer(){
-    m_IndexerMotor.set(Constants.RobotConstants.IndexSpeed);
+  public void spinShooter(){
+    m_ShooterMotor.set(Constants.RobotConstants.ShooterSpeed);
   }
 
-  public void stopIndexer(){
-     m_IndexerMotor.stopMotor();
+  public void stopShooter(){
+     m_ShooterMotor.stopMotor();
   }
 
   @Override

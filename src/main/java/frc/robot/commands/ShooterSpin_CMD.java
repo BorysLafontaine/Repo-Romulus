@@ -5,15 +5,15 @@
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Indexer;
+import frc.robot.subsystems.SS_Shooter;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
-public class IndexerSpin_CMD extends Command {
+public class ShooterSpin_CMD extends Command {
   /** Creates a new IndexerSpin_CMD. */
-  private final Indexer mIndexer;
-  public IndexerSpin_CMD(Indexer pIndexer) {
+  private final SS_Shooter mShooter;
+  public ShooterSpin_CMD(SS_Shooter pShooter) {
     // Use addRequirements() here to declare subsystem dependencies.
-    mIndexer = pIndexer;
+    mShooter = pShooter;
   }
 
   // Called when the command is initially scheduled.
@@ -23,13 +23,13 @@ public class IndexerSpin_CMD extends Command {
   // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-    mIndexer.spinIndexer();
+    mShooter.spinShooter();
   }
 
   // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {
-    mIndexer.stopIndexer();
+    mShooter.stopShooter();
   }
 
   // Returns true when the command should end.
