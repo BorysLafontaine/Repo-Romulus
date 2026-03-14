@@ -26,11 +26,19 @@ public class SS_Velocity_Calculator extends SubsystemBase {
         { 210.0, 170.0, 0.5 },
         { 250.0, 200.0, 0.5 },  // loin du hub
   };
-
   // Coefficients de la courbe v = a·d² + b·d + c
   private double coeffA;
   private double coeffB;
   private double coeffC;
+
+    /** Creates a new SS_Velocity_Calculator. */
+  public SS_Velocity_Calculator() {
+    Pose2d mPosRobot = new Pose2d();
+  }
+  @Override
+  public void periodic() {
+    // This method will be called once per scheduler run
+  }
 
   public void VelocityCalculator() {
       double[] coeffs = fitQuadratic(DATA);
@@ -154,14 +162,5 @@ public class SS_Velocity_Calculator extends SubsystemBase {
       return x;
   }
 
-  /** Creates a new SS_Velocity_Calculator. */
-  public SS_Velocity_Calculator() {
-    Pose2d mPosRobot = new Pose2d();
 
-  }
-
-  @Override
-  public void periodic() {
-    // This method will be called once per scheduler run
-  }
 }
