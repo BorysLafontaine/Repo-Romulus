@@ -19,7 +19,7 @@ public final class Constants {
 
   public static final class RobotConstants {
     
-    public static final double IndexSpeed = 0.3;
+    public static final double ShooterSpeed = 0.3;
 
   }
 }
