@@ -19,12 +19,16 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_Intake extends SubsystemBase {
 
-  private final Solenoid m_solenoid = new Solenoid(PneumaticsModuleType.REVPH, 0);
-  private final DoubleSolenoid m_doubleSolenoid =
-  new DoubleSolenoid(PneumaticsModuleType.REVPH, 1, 2);
-  
+  private final Solenoid m_solenoid =             new Solenoid(PneumaticsModuleType.REVPH, 0);
+  private final DoubleSolenoid m_doubleSolenoid = new DoubleSolenoid(PneumaticsModuleType.REVPH, 1, 2);
+  private final Compressor m_compressor =         new Compressor(PneumaticsModuleType.REVPH);
   // État du système 
-  private Value deployedState ;
+  private Value deployedState;
+
+  static final int kSolenoidButton = 1;
+  static final int kDoubleSolenoidForwardButton = 2;
+  static final int kDoubleSolenoidReverseButton = 3;
+  static final int kCompressorButton = 4;
   
   /** create a new ss_intake */
   public SS_Intake() {
@@ -33,7 +37,6 @@ public class SS_Intake extends SubsystemBase {
     tab.add("Single Solenoid", m_solenoid);
     tab.add("Double Solenoid", m_doubleSolenoid);
     tab.add("Compressor", m_compressor);
-
     // Also publish some raw data
     // Get the pressure (in PSI) from the analog sensor connected to the PH.
     // This function is supported only on the PH!
@@ -84,12 +87,9 @@ public class SS_Intake extends SubsystemBase {
 
 
   // Compressor connected to a PH with a default CAN ID (1)
-  private final Compressor m_compressor = new Compressor(PneumaticsModuleType.REVPH);
+  
 
-  static final int kSolenoidButton = 1;
-  static final int kDoubleSolenoidForwardButton = 2;
-  static final int kDoubleSolenoidReverseButton = 3;
-  static final int kCompressorButton = 4;
+  
 
   /** Called once at the beginning of the robot program. */
   public Robot() {
@@ -150,4 +150,3 @@ public class SS_Intake extends SubsystemBase {
         }
       }
     }
-  }
