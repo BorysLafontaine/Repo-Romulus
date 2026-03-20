@@ -8,7 +8,7 @@ import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-
+ 
 public class SS_Intake extends SubsystemBase {
 
     private final Solenoid m_solenoid = new Solenoid(PneumaticsModuleType.REVPH, 0);

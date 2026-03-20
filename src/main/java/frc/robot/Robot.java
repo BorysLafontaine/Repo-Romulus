@@ -82,7 +82,7 @@ public class Robot extends TimedRobot {
             m_intake.toggleCompressor();
         }
     }
-    
+
     @Override
     public void teleopExit() {}
 
@@ -90,7 +90,7 @@ public class Robot extends TimedRobot {
     public void testInit() {
         CommandScheduler.getInstance().cancelAll();
     }
-
+ 
     @Override
     public void testPeriodic() {}
     @Override
