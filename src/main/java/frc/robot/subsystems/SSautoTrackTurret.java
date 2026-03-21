@@ -8,7 +8,6 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose2d.*;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 
@@ -81,7 +80,7 @@ public class SSautoTrackTurret extends SubsystemBase {
         boolean backwardSafe = withinBounds(projectedBackward);
 
         if (forwardSafe && backwardSafe) {
-            // Les deux directions sont sûres → prendre le chemin le plus court
+            // Les deux directions sont sûres → prendre gitle chemin le plus court
             currentRotation = projectedForward;
         } else if (forwardSafe) {
             // Seule la direction avant reste dans les limites
