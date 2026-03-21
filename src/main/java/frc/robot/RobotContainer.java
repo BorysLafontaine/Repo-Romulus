@@ -69,7 +69,7 @@ public class RobotContainer {
         RobotModeTriggers.disabled().whileTrue(
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
-        joystick.x().whileTrue(mShooterSpin_CMD);
+        joystick.x().toggleOnTrue(mShooterSpin_CMD);
         joystick.y().onTrue(mtoggle_intake_CMD);
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
         joystick.b().whileTrue(drivetrain.applyRequest(() ->

@@ -6,10 +6,6 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.hardware.TalonFX;
 
-import frc.robot.generated.Constants;
-import frc.robot.generated.Constants.*;
-import math.PIDFController;
-import math.PIDFSController;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
