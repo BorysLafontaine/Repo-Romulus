@@ -4,7 +4,9 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -12,7 +14,8 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_Shooter extends SubsystemBase {
 
-  private final TalonFX m_ShooterMotor;
+  private final TalonFX m_LeadShooterMotor;
+  private final TalonFX m_FollowShooterMotor;
 
 
 //PIDFS Variables
@@ -37,7 +40,11 @@ public class SS_Shooter extends SubsystemBase {
 
   /** Creates a new SS_Shooter. */
   public SS_Shooter() {
-    m_ShooterMotor = new TalonFX(30);
+    m_LeadShooterMotor = new TalonFX(31);
+    m_FollowShooterMotor = new TalonFX(32);
+    m_FollowShooterMotor.setControl(new Follower(m_LeadShooterMotor.getDeviceID(), MotorAlignmentValue.Opposed));
+    m_LeadShooterMotor.setSafetyEnabled(true);
+
     SmartDashboard.putNumber("kP", kP);
     SmartDashboard.putNumber("kI", kI);
     SmartDashboard.putNumber("kD", kD);
@@ -47,14 +54,14 @@ public class SS_Shooter extends SubsystemBase {
   }
 
   public void spinShooter(){
-    double currentVel = 60 * m_ShooterMotor.getVelocity().getValueAsDouble();
+    double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
-    m_ShooterMotor.set(calculate(RPM, currentVel, currentVoltage));
+    m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));
   }
 
   public void stopShooter(){
     resetController();
-    m_ShooterMotor.stopMotor();
+    m_LeadShooterMotor.stopMotor();
   }
 
   @Override
@@ -70,7 +77,7 @@ public class SS_Shooter extends SubsystemBase {
     SmartDashboard.putNumber("Error", error);
     SmartDashboard.putNumber("Integral", integral);
     SmartDashboard.putNumber("Derivative", derivative);
-    SmartDashboard.putNumber("Current vel", 60 * m_ShooterMotor.getVelocity().getValueAsDouble());
+    SmartDashboard.putNumber("Current vel", 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble());
   }
 
   public double calculate(double target, double current, double currentVoltage) {
