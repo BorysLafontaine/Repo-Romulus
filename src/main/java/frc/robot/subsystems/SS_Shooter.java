@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -19,11 +20,11 @@ public class SS_Shooter extends SubsystemBase {
 
 
 //PIDFS Variables
-  public static double kP = 0.0;
+  public static double kP = 0.0000001;
   public static double kI = 0.0;
   public static double kD = 0.0;
-  public static double kF = 0.0;
-  public static double kS = 0.0;
+  public static double kF = 0.0001675;
+  public static double kS = 0.0145;
   public static double nominalVoltage = 12.0;
 
   private double error = 0.0;
@@ -43,7 +44,10 @@ public class SS_Shooter extends SubsystemBase {
     m_LeadShooterMotor = new TalonFX(31);
     m_FollowShooterMotor = new TalonFX(32);
     m_FollowShooterMotor.setControl(new Follower(m_LeadShooterMotor.getDeviceID(), MotorAlignmentValue.Opposed));
-    m_LeadShooterMotor.setSafetyEnabled(true);
+    m_LeadShooterMotor.setSafetyEnabled(false);
+
+    m_LeadShooterMotor.setNeutralMode(NeutralModeValue.Coast);
+    m_FollowShooterMotor.setNeutralMode(NeutralModeValue.Coast);
 
     SmartDashboard.putNumber("kP", kP);
     SmartDashboard.putNumber("kI", kI);
