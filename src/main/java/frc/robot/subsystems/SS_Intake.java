@@ -56,6 +56,10 @@ public class SS_Intake extends SubsystemBase {
         }
     }
 
+    public void update(){
+      m_compressor.isEnabled();
+    }
+
     @Override
     public void periodic() {}
 }
