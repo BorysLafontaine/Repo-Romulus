@@ -5,12 +5,10 @@
 package frc.robot;
 
 import com.ctre.phoenix6.HootAutoReplay;
-import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
-import frc.robot.subsystems.SS_Intake;
 
 public class Robot extends TimedRobot {
     private Command m_autonomousCommand;
@@ -21,13 +19,6 @@ public class Robot extends TimedRobot {
         .withTimestampReplay()
         .withJoystickReplay();
     
-    private final SS_Intake m_intake = new SS_Intake();
-    // ⚠️ port 1 pour ne pas conflit avec le xbox sur port 0
-    private final Joystick m_stick = new Joystick(1);
-    private static final int kDeployButton     = 1;
-    private static final int kRetractButton    = 2;
-    private static final int kCompressorButton = 3;
-    private static final int kSolenoidButton   = 4;
 
     public Robot() {
         m_robotContainer = new RobotContainer();   
@@ -69,18 +60,7 @@ public class Robot extends TimedRobot {
 
     @Override
     public void teleopPeriodic() {  
-        // Single solenoid — maintenu tant que bouton enfoncé
-        m_intake.setSolenoid(m_stick.getRawButton(kSolenoidButton));
-        // Double solenoid — deploy ou retract
-        if (m_stick.getRawButtonPressed(kDeployButton)) {
-            m_intake.deploy();
-        } else if (m_stick.getRawButtonPressed(kRetractButton)) {
-            m_intake.retract();
-        }
-        // Toggle compressor
-        if (m_stick.getRawButtonPressed(kCompressorButton)) {
-            m_intake.toggleCompressor();
-        }
+
     }
 
     @Override

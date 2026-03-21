@@ -2,7 +2,6 @@ package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
@@ -33,31 +32,27 @@ public class SS_Intake extends SubsystemBase {
     }
 
     public void deploy() {
-        m_doubleSolenoid.set(Value.kForward);
+        m_doubleSolenoid.set(DoubleSolenoid.Value.kForward);
     }
 
     public void retract() {
-        m_doubleSolenoid.set(Value.kReverse);
+        m_doubleSolenoid.set(DoubleSolenoid.Value.kReverse);
     }
 
     public void toggleDeploy() {
-        if (m_doubleSolenoid.get() == Value.kForward) {
+        if (m_doubleSolenoid.get() == DoubleSolenoid.Value.kForward) {
             retract();
         } else {
             deploy();
         }
     }
 
-    public void toggleCompressor() {
+    public void toggle_Solenoid() {
         if (m_compressor.isEnabled()) {
             m_compressor.disable();
         } else {
             m_compressor.enableAnalog(70, 120);
         }
-    }
-
-    public void update(){
-      m_compressor.isEnabled();
     }
 
     @Override
