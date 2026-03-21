@@ -31,7 +31,7 @@ public class RobotContainer {
     private final SS_Shooter mShooter = new SS_Shooter();
     private final ShooterSpin_CMD mShooterSpin_CMD = new ShooterSpin_CMD(mShooter);
 
-        private final SS_Intake mIntake = new SS_Intake();
+    private final SS_Intake mIntake = new SS_Intake();
     private final toggle_intake_CMD mtoggle_intake_CMD = new toggle_intake_CMD(mIntake);
 
     /* Setting up bindings for necessary control of the swerve drive platform */
@@ -70,7 +70,7 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
         joystick.x().whileTrue(mShooterSpin_CMD);
-        joystick.y().onTrue(new toggle_intake_CMD(mIntake));
+        joystick.y().onTrue(mtoggle_intake_CMD);
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
         joystick.b().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
@@ -79,8 +79,6 @@ public class RobotContainer {
         // Reset the field-centric heading on left bumper press.
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
         drivetrain.registerTelemetry(logger::telemeterize);
-
-        joystick.y().onTrue(mtoggle_intake_CMD);
     }
 
     public Command getAutonomousCommand() {

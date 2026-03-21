@@ -13,7 +13,7 @@ public class toggle_intake_CMD extends Command {
   private final SS_Intake m_intake; 
   public toggle_intake_CMD(SS_Intake pIntake) {
     // Use addRequirements() here to declare subsystem dependencies.
-    m_intake = new SS_Intake();
+    m_intake = pIntake;
   }
 
   // Called when the command is initially scheduled.
