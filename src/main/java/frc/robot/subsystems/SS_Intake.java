@@ -28,6 +28,10 @@ public class SS_Intake extends SubsystemBase {
         m_compressor.enableAnalog(70, 120);
     }
 
+    public void toggle_Solenoid(){
+        
+    }
+
     public void setSolenoid(boolean extended) {
         m_solenoid.set(extended);
     }
@@ -56,10 +60,23 @@ public class SS_Intake extends SubsystemBase {
         }
     }
 
-    public void update(){
-      m_compressor.isEnabled();
-    }
-
     @Override
     public void periodic() {}
 }
+
+    
+    
+
+
+        // Single solenoid — maintenu tant que bouton enfoncé
+        m_intake.setSolenoid(m_stick.getRawButton(kSolenoidButton));
+        // Double solenoid — deploy ou retract
+        if (m_stick.getRawButtonPressed(kDeployButton)) {
+            m_intake.deploy();
+        } else if (m_stick.getRawButtonPressed(kRetractButton)) {
+            m_intake.retract();
+        }
+        // Toggle compressor
+        if (m_stick.getRawButtonPressed(kCompressorButton)) {
+            m_intake.toggleCompressor();
+        }

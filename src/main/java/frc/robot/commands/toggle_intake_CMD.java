@@ -10,22 +10,22 @@ import frc.robot.subsystems.SS_Intake;
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
 public class toggle_intake_CMD extends Command {
   /** Creates a new toggle_intake_CMD. */
-  private final SS_Intake mIntake;
+  private final SS_Intake m_intake; 
   public toggle_intake_CMD(SS_Intake pIntake) {
     // Use addRequirements() here to declare subsystem dependencies.
-    mIntake = pIntake;
+    m_intake = new SS_Intake();
   }
 
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-    mIntake.update();
+    
   }
 
   // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-    mIntake.toggleDeploy();
+    m_intake.toggleDeploy();
   }
 
   // Called once the command ends or is interrupted.
