@@ -23,7 +23,7 @@ public class PIDFSController {
 
     public double calculate(double target, double current, double currentVoltage) {
         error = target - current;
-        dt = Timer.getFPGATimestamp() * (10^-9);
+        dt = Timer.getFPGATimestamp() / (10^-9);
         integral += error;
         if (Math.abs(integral) > MAX_INTEGRAL) {
             integral = MAX_INTEGRAL * Math.signum(integral);
