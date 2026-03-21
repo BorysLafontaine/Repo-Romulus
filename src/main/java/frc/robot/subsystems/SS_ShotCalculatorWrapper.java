@@ -8,6 +8,11 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_ShotCalculatorWrapper extends SubsystemBase {
 
+  // Singleton instance
+  private static SS_ShotCalculatorWrapper m_instance;
+  public static SS_ShotCalculatorWrapper getInstance() {
+    return m_instance;
+  }
   private static final Translation2d HUB_CENTER  = new Translation2d(8.23, 4.11);
   private static final Translation2d HUB_FORWARD = new Translation2d(1.0, 0.0);
 
@@ -22,6 +27,7 @@ public class SS_ShotCalculatorWrapper extends SubsystemBase {
 
   public SS_ShotCalculatorWrapper(CommandSwerveDrivetrain swerve) {
     m_swerve = swerve;
+    m_instance = this; // register on construction
   }
 
   @Override

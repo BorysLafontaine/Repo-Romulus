@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems;
 
+import custom.ShotCalculator;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
@@ -104,5 +105,9 @@ public class SS_Shooter extends SubsystemBase {
     public void resetController() {
         integral = 0.0;
         derivative = 0.0;
-    }  
+    }
+
+    public ShotCalculator.LaunchParameters get_ShotCalculator_param() {
+      return SS_ShotCalculatorWrapper.getInstance().getResult();
+    }
 }
