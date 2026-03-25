@@ -18,7 +18,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
  */
 
-package frc.firecontrol;
+package custom;
 
 import java.util.ArrayList;
 import java.util.List;
