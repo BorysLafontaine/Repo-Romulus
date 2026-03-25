@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.SS_Shooter;
+import frc.robot.subsystems.SS_ShotCalculatorWrapper;
 import frc.robot.commands.ShooterSpin_CMD;
 import frc.robot.subsystems.SS_Intake;
 import frc.robot.commands.toggle_intake_CMD;
@@ -46,6 +47,7 @@ public class RobotContainer {
     private final CommandXboxController joystick = new CommandXboxController(0);
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    private final SS_ShotCalculatorWrapper m_shotCalc = new SS_ShotCalculatorWrapper(drivetrain);
 
     public RobotContainer() {
         configureBindings();

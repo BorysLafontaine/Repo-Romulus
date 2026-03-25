@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.TalonFX;
 
+import custom.ShotCalculator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -125,5 +126,9 @@ public class SSautoTrackTurret extends SubsystemBase {
     /** Retourne true si la rotation est dans les limites [-π, π]. */
     private boolean withinBounds(double rotation) {
         return Math.abs(rotation) <= MAX_ROTATION;
+    }
+
+    public ShotCalculator.LaunchParameters get_ShotCalculator_param() {
+      return SS_ShotCalculatorWrapper.getInstance().getResult();
     }
 }
