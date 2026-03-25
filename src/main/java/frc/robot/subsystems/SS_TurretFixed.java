@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -28,11 +29,12 @@ public class SS_TurretFixed extends SubsystemBase {
   private double MAX_INTEGRAL = 5000.0;
 
   private double targetAngle = 0.0;
+  private double correctedTargetAngle = 0.0;
 
   private double output = 0.0;
 
-  private final double gearRatio = (155 / 12) * 5;
-  private final double ticksPerDeg = 8192 / (360 * gearRatio);
+  private final double gearRatio = (155.0 / 12.0) * 5;
+  private final double degPerRot = (360 * gearRatio);
 
   public SS_TurretFixed() {
     m_turretMotor = new TalonFX(40);
@@ -51,14 +53,19 @@ public class SS_TurretFixed extends SubsystemBase {
   }
 
   public void setTargetAngle(double angleInRad) {
-    targetAngle = Math.toDegrees(angleInRad);
+    targetAngle = Math.toDegrees(MathUtil.angleModulus(angleInRad));
   }
 
   public void turretGoToTarget() {
-    double currentPos = m_turretMotor.getPosition().getValueAsDouble() / ticksPerDeg;
-     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
+    double currentPos = m_turretMotor.getPosition().getValueAsDouble() * degPerRot;
+    double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
+    if (targetAngle > 90) {
+      correctedTargetAngle = 90;
+    } else if (targetAngle < -90) {
+      correctedTargetAngle = -90;
+    } else correctedTargetAngle = targetAngle;
 
-    m_turretMotor.set(calculate(targetAngle, currentPos, currentVoltage));
+    m_turretMotor.set(calculate(correctedTargetAngle, currentPos, currentVoltage));
   }
 
   public void stopTurret() {
