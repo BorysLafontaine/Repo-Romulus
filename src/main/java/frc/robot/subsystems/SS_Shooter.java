@@ -90,14 +90,14 @@ public class SS_Shooter extends SubsystemBase {
       dt = Timer.getFPGATimestamp() / (10^-9);
       integral += error;
       if (Math.abs(integral) > MAX_INTEGRAL) {
-          integral = MAX_INTEGRAL * Math.signum(integral);
+        integral = MAX_INTEGRAL * Math.signum(integral);
       }
       derivative = (error - lastError) / dt;
       output = kP * error + kI * integral + kD * derivative + kF * target + kS * Math.signum(error) + ((error / Math.abs(error)) * (currentVoltage / nominalVoltage));
       lastError = error;
 
       if (Math.abs(output) > 1) {
-          output = 1 * Math.signum(output);
+        output = 1 * Math.signum(output);
       }
       return output;
     }

@@ -4,10 +4,16 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_TurretFixed extends SubsystemBase {
   /** Creates a new SS_TurretFixed. */
+
+  private TalonFX m_turretMotor;
 
   public static double kP = 0.0;
   public static double kI = 0.0;
@@ -21,15 +27,59 @@ public class SS_TurretFixed extends SubsystemBase {
   private double lastError = 0.0;
   private double MAX_INTEGRAL = 5000.0;
 
+  private double targetAngle = 0.0;
+
   private double output = 0.0;
 
-  public SS_TurretFixed() {
+  private final double gearRatio = (155 / 12) * 5;
+  private final double ticksPerDeg = 8192 / (360 * gearRatio);
 
+  public SS_TurretFixed() {
+    m_turretMotor = new TalonFX(40);
+    m_turretMotor.setSafetyEnabled(false);
+
+    m_turretMotor.setNeutralMode(NeutralModeValue.Brake);
+
+    m_turretMotor.setPosition(0);
+
+    SmartDashboard.putNumber("kP", kP);
+    SmartDashboard.putNumber("kI", kI);
+    SmartDashboard.putNumber("kD", kD);
+    SmartDashboard.putNumber("kF", kF);
+
+    SmartDashboard.putNumber("Target Angle", targetAngle);
+  }
+
+  public void setTargetAngle(double angleInRad) {
+    targetAngle = Math.toDegrees(angleInRad);
+  }
+
+  public void turretGoToTarget() {
+    double currentPos = m_turretMotor.getPosition().getValueAsDouble() / ticksPerDeg;
+     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
+
+    m_turretMotor.set(calculate(targetAngle, currentPos, currentVoltage));
+  }
+
+  public void stopTurret() {
+    resetController();
+    m_turretMotor.stopMotor();
   }
 
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
+    kP = SmartDashboard.getNumber("kP_T", 0);
+    kI = SmartDashboard.getNumber("kI_T", 0);
+    kD = SmartDashboard.getNumber("kD_T", 0);
+    kF = SmartDashboard.getNumber("kF_T", 0);
+
+    targetAngle = SmartDashboard.getNumber("Target Angle", 0);
+
+    SmartDashboard.putNumber("Error", error);
+    SmartDashboard.putNumber("Integral", integral);
+    SmartDashboard.putNumber("Derivative", derivative);
+    SmartDashboard.putNumber("Current pos in deg",  m_turretMotor.getPosition().getValueAsDouble() / ticksPerDeg);
   }
 
   public double calculate(double target, double current, double currentVoltage) {
