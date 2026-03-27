@@ -1,28 +1,20 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.SS_Shooter;
 import frc.robot.subsystems.SS_TurretFixed;
 
-/* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
 public class TurretGoToTarget_CMD extends Command {
-  /** Creates a new TurretGoToTarget_CMD. */
-  public TurretGoToTarget_CMD() {
-    // Use addRequirements() here to declare subsystem dependencies.
-    private final SS_TurretFixed mTurretFixed;
-    public TurretGoToTarget_CMD(SS_TurretFixed pTurretFixed) {
-    // Use addRequirements() here to declare subsystem dependencies.
+
+  private final SS_TurretFixed mTurretFixed;
+
+  // Constructeur
+  public TurretGoToTarget_CMD(SS_TurretFixed pTurretFixed) {
     mTurretFixed = pTurretFixed;
   }
 
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -36,6 +28,7 @@ public class TurretGoToTarget_CMD extends Command {
   public void end(boolean interrupted) {
     mTurretFixed.stopTurret();
   }
+
   // Returns true when the command should end.
   @Override
   public boolean isFinished() {
