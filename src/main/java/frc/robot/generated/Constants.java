@@ -21,6 +21,8 @@ public final class Constants {
     
     public static final double ShooterSpeed = 0.5;
     public static final double RollerSpeed = 0.3;
+    public static final double IRollerSpeed = 0.3;
+    public static final double TransferSpeed = 0.3;
 
 
   }
