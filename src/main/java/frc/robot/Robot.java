@@ -22,7 +22,8 @@ public class Robot extends TimedRobot {
         .withJoystickReplay();
 
     public Robot() {
-        m_robotContainer = new RobotContainer();   
+        m_robotContainer = new RobotContainer();
+        CameraServer.startAutomaticCapture();
     }
 
     @Override
@@ -53,7 +54,6 @@ public class Robot extends TimedRobot {
 
     @Override
     public void teleopInit() {
-        CameraServer.startAutomaticCapture();
         if (m_autonomousCommand != null) {
             CommandScheduler.getInstance().cancel(m_autonomousCommand);
         }
