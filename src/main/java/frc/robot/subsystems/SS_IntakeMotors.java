@@ -25,6 +25,11 @@ public class SS_IntakeMotors extends SubsystemBase {
     m_IRollerMotor.set(Constants.RobotConstants.IRollerSpeed);
   }
 
+  public void reverseSpinIRoller(){
+    m_IRollerMotor.set(-Constants.RobotConstants.IRollerSpeed);
+  }
+
+
   public void stopIRoller(){
      m_IRollerMotor.stopMotor();
   }

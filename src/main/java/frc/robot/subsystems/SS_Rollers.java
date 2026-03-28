@@ -25,6 +25,10 @@ public class SS_Rollers extends SubsystemBase {
     m_RollerMotor.set(Constants.RobotConstants.RollerSpeed);
   }
 
+  public void reverseSpinRoller(){
+    m_RollerMotor.set(-Constants.RobotConstants.RollerSpeed);
+  }
+
   public void stopRoller(){
      m_RollerMotor.stopMotor();
   }

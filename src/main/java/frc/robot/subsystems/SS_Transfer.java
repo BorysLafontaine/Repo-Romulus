@@ -25,6 +25,10 @@ public class SS_Transfer extends SubsystemBase {
     m_TransferMotor.set(Constants.RobotConstants.TransferSpeed);
   }
 
+  public void reverseSpinTransfer(){
+    m_TransferMotor.set(-Constants.RobotConstants.TransferSpeed);
+  }
+
   public void stopTransfer(){
      m_TransferMotor.stopMotor();
   }

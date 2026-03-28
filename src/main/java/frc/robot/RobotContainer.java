@@ -25,6 +25,9 @@ import frc.robot.subsystems.SS_TurretFixed;
 import frc.robot.commands.CloseShooterSpin_CMD;
 import frc.robot.commands.FarShooterSpin_CMD;
 import frc.robot.commands.IntakeSpin_CMD;
+import frc.robot.commands.ReverseIntakeSpin_CMD;
+import frc.robot.commands.ReverseRollerSpin_CMD;
+import frc.robot.commands.ReverseTransfer_CMD;
 import frc.robot.commands.RollerSpin_CMD;
 import frc.robot.commands.ShooterSpin_CMD;
 import frc.robot.commands.Transfer_CMD;
@@ -56,12 +59,15 @@ public class RobotContainer {
 
     private final SS_IntakeMotors mIntakeMotors = new SS_IntakeMotors();
     private final IntakeSpin_CMD mIntakeSpin_CMD = new IntakeSpin_CMD(mIntakeMotors);
+    private final ReverseIntakeSpin_CMD mReverseIntakeSpin_CMD = new ReverseIntakeSpin_CMD(mIntakeMotors);
 
     private final SS_Transfer mTransfer = new SS_Transfer();
     private final Transfer_CMD mTransfer_CMD = new Transfer_CMD(mTransfer); 
+    private final ReverseTransfer_CMD mReverseTransfer_CMD = new ReverseTransfer_CMD(mTransfer);
 
     private final SS_Rollers mRollers = new SS_Rollers();
     private final RollerSpin_CMD mRollerSpin_CMD = new RollerSpin_CMD(mRollers); 
+    private final ReverseRollerSpin_CMD mReverseRollerSpin_CMD = new ReverseRollerSpin_CMD(mRollers);
 
     /* Setting up bindings for necessary control of the swerve drive platform */
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -99,6 +105,7 @@ public class RobotContainer {
         RobotModeTriggers.disabled().whileTrue(
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
+        
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
         joystick.povDown().toggleOnTrue(mCloseShooterSpin_CMD);
         joystick.povUp().toggleOnTrue(mFarShooterSpin_CMD);
@@ -108,13 +115,17 @@ public class RobotContainer {
         joystick.y().onTrue(mtoggle_intake_CMD);
 
         joystick.rightBumper().toggleOnTrue(mIntakeSpin_CMD);
-        joystick.b().whileTrue(mIntakeSpin_CMD);
-        joystick.b().whileTrue(mRollerSpin_CMD);
-        joystick.b().whileTrue(mTransfer_CMD);
+
+        joystick.leftBumper().whileTrue(mIntakeSpin_CMD);
+        joystick.leftBumper().whileTrue(mRollerSpin_CMD);
+        joystick.leftBumper().whileTrue(mTransfer_CMD);
+
+        joystick.b().whileTrue(mReverseIntakeSpin_CMD);
+        joystick.b().whileTrue(mReverseRollerSpin_CMD);
+        joystick.b().whileTrue(mReverseTransfer_CMD);
 
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
 
-        
         // Reset the field-centric heading on left bumper press.
         joystick.povLeft().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
         drivetrain.registerTelemetry(logger::telemeterize);
