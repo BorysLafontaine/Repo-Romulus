@@ -17,9 +17,40 @@
           }
         },
         {
-          "type": "path",
+          "type": "parallel",
           "data": {
-            "pathName": "Path1-3"
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "Intake deploy"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Intake spin"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Rollers"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Transfer"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "Path1-3"
+                }
+              }
+            ]
           }
         }
       ]

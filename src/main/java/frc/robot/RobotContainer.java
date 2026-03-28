@@ -5,10 +5,15 @@
 package frc.robot;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
@@ -83,8 +88,21 @@ public class RobotContainer {
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
     private final SS_ShotCalculatorWrapper m_shotCalc = new SS_ShotCalculatorWrapper(drivetrain);
 
+
+    private final SendableChooser<Command> autoChooser;
+
+
     public RobotContainer() {
-        configureBindings();
+        NamedCommands.registerCommand("Intake deploy", getAutonomousCommand());
+        NamedCommands.registerCommand("Intake spin", getAutonomousCommand());
+        NamedCommands.registerCommand("Rollers", mRollerSpin_CMD);
+        NamedCommands.registerCommand("Transfer", mTransfer_CMD);
+
+
+       autoChooser = AutoBuilder.buildAutoChooser("Auto-1");
+       SmartDashboard.putData("Auto Mode", autoChooser);
+       configureBindings();
+        
     }
 
     private void configureBindings() {
@@ -105,7 +123,7 @@ public class RobotContainer {
         RobotModeTriggers.disabled().whileTrue(
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
-        
+
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
         joystick.povDown().toggleOnTrue(mCloseShooterSpin_CMD);
         joystick.povUp().toggleOnTrue(mFarShooterSpin_CMD);

@@ -53,7 +53,7 @@ public class Robot extends TimedRobot {
 
     @Override
     public void teleopInit() {
-        CameraServer.startAutomaticCapture();
+       CameraServer.startAutomaticCapture();
         if (m_autonomousCommand != null) {
             CommandScheduler.getInstance().cancel(m_autonomousCommand);
         }
