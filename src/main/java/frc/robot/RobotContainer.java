@@ -93,11 +93,11 @@ public class RobotContainer {
 
 
     public RobotContainer() {
-        NamedCommands.registerCommand("Intake deploy", getAutonomousCommand());
-        NamedCommands.registerCommand("Intake spin", getAutonomousCommand());
+        NamedCommands.registerCommand("Intake deploy", mtoggle_intake_CMD);
+        NamedCommands.registerCommand("Intake spin", mIntakeSpin_CMD);
         NamedCommands.registerCommand("Rollers", mRollerSpin_CMD);
         NamedCommands.registerCommand("Transfer", mTransfer_CMD);
-       // NamedCommands.registerCommand("Tirer", );
+        NamedCommands.registerCommand("Tirer", mCloseShooterSpin_CMD);
 
 
        autoChooser = AutoBuilder.buildAutoChooser("AutoTest");
