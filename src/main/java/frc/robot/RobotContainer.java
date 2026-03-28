@@ -45,9 +45,9 @@ import frc.robot.commands.toggle_intake_CMD;
 
 public class RobotContainer {
 
-    private SlewRateLimiter xLimiter = new SlewRateLimiter(0.8);
-    private SlewRateLimiter yLimiter = new SlewRateLimiter(0.8);
-    private SlewRateLimiter omegaLimiter = new SlewRateLimiter(1.5);
+    private SlewRateLimiter xLimiter = new SlewRateLimiter(2);
+    private SlewRateLimiter yLimiter = new SlewRateLimiter(2);
+    private SlewRateLimiter omegaLimiter = new SlewRateLimiter(4.0);
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
 
@@ -82,14 +82,14 @@ public class RobotContainer {
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
 
     private final Telemetry logger = new Telemetry(MaxSpeed);
-
+ 
     private final CommandXboxController joystick = new CommandXboxController(0);
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
     private final SS_ShotCalculatorWrapper m_shotCalc = new SS_ShotCalculatorWrapper(drivetrain);
 
 
-    private final SendableChooser<Command> autoChooser;
+    //private final SendableChooser<Command> autoChooser;
 
 
     public RobotContainer() {
@@ -100,8 +100,8 @@ public class RobotContainer {
         NamedCommands.registerCommand("Tirer", mCloseShooterSpin_CMD);
 
 
-       autoChooser = AutoBuilder.buildAutoChooser("AutoTest");
-       SmartDashboard.putData("Auto Mode", autoChooser);
+       //autoChooser = AutoBuilder.buildAutoChooser("AutoTest");
+      // SmartDashboard.putData("Auto Mode", autoChooser);
        configureBindings();
         
     }
