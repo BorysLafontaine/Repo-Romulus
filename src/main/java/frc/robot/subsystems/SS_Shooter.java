@@ -38,7 +38,7 @@ public class SS_Shooter extends SubsystemBase {
   private double output = 0.0;
 
   //Speed tuning constant
-  private double RPM = 2750.0;
+  private double RPM = 0.0;
 
   /** Creates a new SS_Shooter. */
   public SS_Shooter() {
@@ -59,6 +59,21 @@ public class SS_Shooter extends SubsystemBase {
   }
 
   public void spinShooter(){
+    RPM = 2675;
+    double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
+    double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
+    m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));
+  }
+
+  public void closeSpinShooter(){
+    RPM = 2250;
+    double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
+    double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
+    m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));
+  }
+
+  public void farSpinShooter(){
+    RPM = 3375;
     double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
     m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));

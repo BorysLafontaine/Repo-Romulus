@@ -22,6 +22,8 @@ import frc.robot.subsystems.SS_Shooter;
 import frc.robot.subsystems.SS_ShotCalculatorWrapper;
 import frc.robot.subsystems.SS_Transfer;
 import frc.robot.subsystems.SS_TurretFixed;
+import frc.robot.commands.CloseShooterSpin_CMD;
+import frc.robot.commands.FarShooterSpin_CMD;
 import frc.robot.commands.IntakeSpin_CMD;
 import frc.robot.commands.RollerSpin_CMD;
 import frc.robot.commands.ShooterSpin_CMD;
@@ -43,6 +45,8 @@ public class RobotContainer {
 
     private final SS_Shooter mShooter = new SS_Shooter();
     private final ShooterSpin_CMD mShooterSpin_CMD = new ShooterSpin_CMD(mShooter);
+    private final CloseShooterSpin_CMD mCloseShooterSpin_CMD = new CloseShooterSpin_CMD(mShooter);
+    private final FarShooterSpin_CMD mFarShooterSpin_CMD = new FarShooterSpin_CMD(mShooter);
 
     private final SS_TurretFixed mTurretFixed = new SS_TurretFixed();
     private final TurretGoToTarget_CMD mTurretGoToTarget_CMD = new TurretGoToTarget_CMD(mTurretFixed);
@@ -96,13 +100,20 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
+        joystick.povDown().toggleOnTrue(mCloseShooterSpin_CMD);
+        joystick.povUp().toggleOnTrue(mFarShooterSpin_CMD);
+
         joystick.povRight().toggleOnTrue(mTurretGoToTarget_CMD);
+
         joystick.y().onTrue(mtoggle_intake_CMD);
-        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
+
         joystick.rightBumper().toggleOnTrue(mIntakeSpin_CMD);
         joystick.b().whileTrue(mIntakeSpin_CMD);
         joystick.b().whileTrue(mRollerSpin_CMD);
         joystick.b().whileTrue(mTransfer_CMD);
+
+        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
+
         
         // Reset the field-centric heading on left bumper press.
         joystick.povLeft().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
