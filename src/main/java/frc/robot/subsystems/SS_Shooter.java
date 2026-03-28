@@ -22,7 +22,7 @@ public class SS_Shooter extends SubsystemBase {
 
 //PIDFS Variables
   public static double kP = 0.0001;
-  public static double kI = 0.00001;
+  public static double kI = 0.00005;
   public static double kD = 0.0000001;
   public static double kF = 0.000165;
   public static double kS = 0.0145;
@@ -38,7 +38,7 @@ public class SS_Shooter extends SubsystemBase {
   private double output = 0.0;
 
   //Speed tuning constant
-  private double RPM = 0.0;
+  private double RPM = 2750.0;
 
   /** Creates a new SS_Shooter. */
   public SS_Shooter() {

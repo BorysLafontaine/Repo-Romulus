@@ -7,6 +7,7 @@ package frc.robot;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
@@ -20,14 +21,25 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.SS_Shooter;
 import frc.robot.subsystems.SS_ShotCalculatorWrapper;
+import frc.robot.subsystems.SS_Transfer;
 import frc.robot.subsystems.SS_TurretFixed;
+import frc.robot.commands.IntakeSpin_CMD;
+import frc.robot.commands.RollerSpin_CMD;
 import frc.robot.commands.ShooterSpin_CMD;
+import frc.robot.commands.Transfer_CMD;
 import frc.robot.commands.TurretGoToTarget_CMD;
+import frc.robot.commands.UltimateEverything_CMD;
 import frc.robot.subsystems.SS_Intake;
+import frc.robot.subsystems.SS_IntakeMotors;
+import frc.robot.subsystems.SS_Rollers;
 import frc.robot.commands.toggle_intake_CMD;
 
 
 public class RobotContainer {
+
+    private SlewRateLimiter xLimiter = new SlewRateLimiter(0.8);
+    private SlewRateLimiter yLimiter = new SlewRateLimiter(0.8);
+    private SlewRateLimiter omegaLimiter = new SlewRateLimiter(1.5);
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
 
@@ -39,6 +51,15 @@ public class RobotContainer {
 
     private final SS_Intake mIntake = new SS_Intake();
     private final toggle_intake_CMD mtoggle_intake_CMD = new toggle_intake_CMD(mIntake);
+
+    private final SS_IntakeMotors mIntakeMotors = new SS_IntakeMotors();
+    private final IntakeSpin_CMD mIntakeSpin_CMD = new IntakeSpin_CMD(mIntakeMotors);
+
+    private final SS_Transfer mTransfer = new SS_Transfer();
+    private final Transfer_CMD mTransfer_CMD = new Transfer_CMD(mTransfer); 
+
+    private final SS_Rollers mRollers = new SS_Rollers();
+    private final RollerSpin_CMD mRollerSpin_CMD = new RollerSpin_CMD(mRollers); 
 
     /* Setting up bindings for necessary control of the swerve drive platform */
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -64,9 +85,9 @@ public class RobotContainer {
         drivetrain.setDefaultCommand(
             // Drivetrain will execute this command periodically
             drivetrain.applyRequest(() ->
-                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+                drive.withVelocityX(xLimiter.calculate(-joystick.getLeftY()) * MaxSpeed) // Drive forward with negative Y (forward)
+                    .withVelocityY(yLimiter.calculate(-joystick.getLeftX()) * MaxSpeed) // Drive left with negative X (left)
+                    .withRotationalRate(omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate) // Drive counterclockwise with negative X (left)
             )
         );
 
@@ -77,15 +98,16 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
-        joystick.rightBumper().toggleOnTrue(mTurretGoToTarget_CMD);
+        joystick.povRight().toggleOnTrue(mTurretGoToTarget_CMD);
         joystick.y().onTrue(mtoggle_intake_CMD);
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-        joystick.b().whileTrue(drivetrain.applyRequest(() ->
-            point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
-        ));
+        joystick.rightBumper().toggleOnTrue(mIntakeSpin_CMD);
+        joystick.b().whileTrue(mIntakeSpin_CMD);
+        joystick.b().whileTrue(mRollerSpin_CMD);
+        joystick.b().whileTrue(mTransfer_CMD);
         
         // Reset the field-centric heading on left bumper press.
-        joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        joystick.povLeft().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 

@@ -12,13 +12,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_TurretFixed extends SubsystemBase {
-  /** Creates a new SS_TurretFixed. */
 
   private TalonFX m_turretMotor;
 
-  public static double kP = 0.0;
-  public static double kI = 0.0;
-  public static double kD = 0.0;
+  public static double kP = 0.00925;
+  public static double kI = 0.00006;
+  public static double kD = 0.0001;
   public static double kF = 0.0;
   public static double nominalVoltage = 12.0;
 
@@ -26,28 +25,30 @@ public class SS_TurretFixed extends SubsystemBase {
   private double integral = 0.0;
   private double derivative = 0.0;
   private double lastError = 0.0;
-  private double MAX_INTEGRAL = 5000.0;
+  private final double MAX_INTEGRAL = 5000.0;
 
   private double targetAngle = 0.0;
   private double correctedTargetAngle = 0.0;
 
   private double output = 0.0;
 
-  private final double gearRatio = (155.0 / 12.0) * 5;
-  private final double degPerRot = (360 * gearRatio);
+  // ✅ CORRECT gear math
+  // 5:1 gearbox and 12:155 reduction → motor spins ~64.58 times per turret rotation
+  private final double gearRatio = (155.0 / 12.0) * 5.0;
+  private final double degPerMotorRot = 360.0 / gearRatio;
 
   public SS_TurretFixed() {
     m_turretMotor = new TalonFX(40);
     m_turretMotor.setSafetyEnabled(false);
 
-    m_turretMotor.setNeutralMode(NeutralModeValue.Brake);
+    m_turretMotor.setNeutralMode(NeutralModeValue.Coast);
 
     m_turretMotor.setPosition(0);
 
-    SmartDashboard.putNumber("kP", kP);
-    SmartDashboard.putNumber("kI", kI);
-    SmartDashboard.putNumber("kD", kD);
-    SmartDashboard.putNumber("kF", kF);
+    SmartDashboard.putNumber("kP_T", kP);
+    SmartDashboard.putNumber("kI_T", kI);
+    SmartDashboard.putNumber("kD_T", kD);
+    SmartDashboard.putNumber("kF_T", kF);
 
     SmartDashboard.putNumber("Target Angle", targetAngle);
   }
@@ -57,13 +58,21 @@ public class SS_TurretFixed extends SubsystemBase {
   }
 
   public void turretGoToTarget() {
-    double currentPos = m_turretMotor.getPosition().getValueAsDouble() * degPerRot;
-    double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
+    double motorRot = m_turretMotor.getPosition().getValueAsDouble();
+
+    // ✅ Convert motor rotations → turret degrees
+    double currentPos = motorRot * degPerMotorRot;
+
+    double currentVoltage = SmartDashboard.getNumber("battery voltage", 12.0);
+
+    // Clamp target
     if (targetAngle > 90) {
       correctedTargetAngle = 90;
     } else if (targetAngle < -90) {
       correctedTargetAngle = -90;
-    } else correctedTargetAngle = targetAngle;
+    } else {
+      correctedTargetAngle = targetAngle;
+    }
 
     m_turretMotor.set(calculate(correctedTargetAngle, currentPos, currentVoltage));
   }
@@ -75,7 +84,6 @@ public class SS_TurretFixed extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
     kP = SmartDashboard.getNumber("kP_T", 0);
     kI = SmartDashboard.getNumber("kI_T", 0);
     kD = SmartDashboard.getNumber("kD_T", 0);
@@ -83,30 +91,47 @@ public class SS_TurretFixed extends SubsystemBase {
 
     targetAngle = SmartDashboard.getNumber("Target Angle", 0);
 
+    double motorRot = m_turretMotor.getPosition().getValueAsDouble();
+    double currentDeg = motorRot * degPerMotorRot;
+
     SmartDashboard.putNumber("Error", error);
     SmartDashboard.putNumber("Integral", integral);
     SmartDashboard.putNumber("Derivative", derivative);
-    SmartDashboard.putNumber("Current pos in deg",  m_turretMotor.getPosition().getValueAsDouble() / ticksPerDeg);
+    SmartDashboard.putNumber("Current pos in deg", currentDeg);
   }
 
   public double calculate(double target, double current, double currentVoltage) {
     error = target - current;
+
     integral += error;
     if (Math.abs(integral) > MAX_INTEGRAL) {
-        integral = MAX_INTEGRAL * Math.signum(integral);
+      integral = MAX_INTEGRAL * Math.signum(integral);
     }
-    derivative = (error + lastError);
-    output = kP * error + kI * integral + kD * derivative + kF * target + (error / Math.abs(error)) * (currentVoltage / nominalVoltage);
+
+    // ✅ FIXED derivative
+    derivative = (error - lastError);
+
+    // ✅ Safe sign (avoids divide by zero)
+    double sign = (Math.abs(error) > 1e-5) ? Math.signum(error) : 0.0;
+
+    output = kP * error
+           + kI * integral
+           + kD * derivative
+           + kF * target;
+
     lastError = error;
 
-    if (Math.abs(output) > 1) {
-        output = 1 * Math.signum(output);
-    }
-    return output;
+    // Clamp output
+    if (Math.abs(output) > 0.5) {
+      output = 0.5 * Math.signum(output);
     }
 
-    public void resetController() {
-        integral = 0.0;
-        derivative = 0.0;
-    }
+    return output;
+  }
+
+  public void resetController() {
+    integral = 0.0;
+    derivative = 0.0;
+    lastError = 0.0;
+  }
 }
