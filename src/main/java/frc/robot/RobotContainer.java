@@ -97,9 +97,10 @@ public class RobotContainer {
         NamedCommands.registerCommand("Intake spin", getAutonomousCommand());
         NamedCommands.registerCommand("Rollers", mRollerSpin_CMD);
         NamedCommands.registerCommand("Transfer", mTransfer_CMD);
+       // NamedCommands.registerCommand("Tirer", );
 
 
-       autoChooser = AutoBuilder.buildAutoChooser("Auto-1");
+       autoChooser = AutoBuilder.buildAutoChooser("AutoTest");
        SmartDashboard.putData("Auto Mode", autoChooser);
        configureBindings();
         
