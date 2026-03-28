@@ -22,7 +22,8 @@ public class Robot extends TimedRobot {
         .withJoystickReplay();
 
     public Robot() {
-        m_robotContainer = new RobotContainer();   
+        m_robotContainer = new RobotContainer();
+        CameraServer.startAutomaticCapture();
     }
 
     @Override
