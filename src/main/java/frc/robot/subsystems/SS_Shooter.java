@@ -21,10 +21,10 @@ public class SS_Shooter extends SubsystemBase {
 
 
 //PIDFS Variables
-  public static double kP = 0.0001;
+  public static double kP = 0.0003;
   public static double kI = 0.00005;
   public static double kD = 0.0000001;
-  public static double kF = 0.000165;
+  public static double kF = 0.000171;
   public static double kS = 0.0145;
   public static double nominalVoltage = 12.0;
 
@@ -59,21 +59,21 @@ public class SS_Shooter extends SubsystemBase {
   }
 
   public void spinShooter(){
-    RPM = 2675;
+    RPM = 2375;
     double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
     m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));
   }
 
   public void closeSpinShooter(){
-    RPM = 2250;
+    RPM = 1500;
     double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
     m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));
   }
 
   public void farSpinShooter(){
-    RPM = 3375;
+    RPM = 3075;
     double currentVel = 60 * m_LeadShooterMotor.getVelocity().getValueAsDouble();
     double currentVoltage = SmartDashboard.getNumber("battery voltage", 0);
     m_LeadShooterMotor.set(calculate(RPM, currentVel, currentVoltage));

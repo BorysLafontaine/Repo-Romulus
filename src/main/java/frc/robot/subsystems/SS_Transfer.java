@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.generated.Constants;
@@ -19,6 +20,7 @@ public class SS_Transfer extends SubsystemBase {
   /** Creates a new SS_Shooter. */
   public SS_Transfer() {
     m_TransferMotor = new TalonFX(30);
+    
   }
 
   public void SpinTransfer(){

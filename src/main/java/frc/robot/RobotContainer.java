@@ -1,7 +1,6 @@
 package frc.robot;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
-import com.pathplanner.lib.auto.NamedCommands;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
@@ -30,6 +29,8 @@ public class RobotContainer {
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
 
     // Subsystems
+    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+
     private final SS_Shooter mShooter = new SS_Shooter();
     private final SS_TurretFixed mTurretFixed = new SS_TurretFixed();
     private final SS_Intake mIntake = new SS_Intake();
@@ -55,80 +56,42 @@ public class RobotContainer {
     private final RollerSpin_CMD mRollerSpin_CMD = new RollerSpin_CMD(mRollers);
     private final ReverseRollerSpin_CMD mReverseRollerSpin_CMD = new ReverseRollerSpin_CMD(mRollers);
 
-    // Swerve
+    // Controller
+    private final CommandXboxController joystick = new CommandXboxController(0);
+
+    // Default drive
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+        .withDeadband(MaxSpeed * 0.1)
+        .withRotationalDeadband(MaxAngularRate * 0.1)
+        .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+
+    // 🔥 Heading hold drive
+    private final SwerveRequest.FieldCentricFacingAngle driveStraight =
+        new SwerveRequest.FieldCentricFacingAngle()
             .withDeadband(MaxSpeed * 0.1)
             .withRotationalDeadband(MaxAngularRate * 0.1)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
     private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
 
-    private final Telemetry logger = new Telemetry(MaxSpeed);
-    private final CommandXboxController joystick = new CommandXboxController(0);
-
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-
     public RobotContainer() {
-        NamedCommands.registerCommand("Intake deploy", mtoggle_intake_CMD);
-        NamedCommands.registerCommand("Intake spin", mIntakeSpin_CMD);
-        NamedCommands.registerCommand("Rollers", mRollerSpin_CMD);
-        NamedCommands.registerCommand("Transfer", mTransfer_CMD);
-        NamedCommands.registerCommand("Tirer", mCloseShooterSpin_CMD);
-
         configureBindings();
     }
 
     private void configureBindings() {
 
         drivetrain.setDefaultCommand(
-            drivetrain.applyRequest(() -> {
-
-                double rawX = -joystick.getLeftY();
-                double rawY = -joystick.getLeftX();
-                double rawOmega = -joystick.getRightX();
-
-                double vx = xLimiter.calculate(rawX * MaxSpeed);
-                double vy = yLimiter.calculate(rawY * MaxSpeed);
-                double omega = omegaLimiter.calculate(rawOmega * MaxAngularRate);
-
-                boolean isStoppedInput =
-                        Math.abs(rawX) < 0.05 &&
-                        Math.abs(rawY) < 0.05 &&
-                        Math.abs(rawOmega) < 0.05;
-
-                // Current robot velocity
-                double currentVx = drivetrain.getState().Speeds.vxMetersPerSecond;
-                double currentVy = drivetrain.getState().Speeds.vyMetersPerSecond;
-                double speed = Math.hypot(currentVx, currentVy);
-
-                if (isStoppedInput) {
-                    // ===== Predictive braking phase =====
-                    if (speed > 0.15) { // tune threshold
-                        double kBrake = 1.2; // braking aggressiveness
-                        double brakeVx = -currentVx * kBrake;
-                        double brakeVy = -currentVy * kBrake;
-
-                        return drive
-                                .withVelocityX(brakeVx)
-                                .withVelocityY(brakeVy)
-                                .withRotationalRate(0);
-                    }
-
-                    // ===== Hard lock =====
-                    return brake;
-                }
-
-                // ===== Normal driving =====
-                return drive
-                        .withVelocityX(vx)
-                        .withVelocityY(vy)
-                        .withRotationalRate(omega);
-            })
+            drivetrain.applyRequest(() ->
+                drive.withVelocityX(xLimiter.calculate(-joystick.getLeftY()) * MaxSpeed)
+                     .withVelocityY(yLimiter.calculate(-joystick.getLeftX()) * MaxSpeed)
+                     .withRotationalRate(omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate)
+            )
         );
 
         final var idle = new SwerveRequest.Idle();
+
         RobotModeTriggers.disabled().whileTrue(
-                drivetrain.applyRequest(() -> idle).ignoringDisable(true)
+            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
@@ -149,22 +112,49 @@ public class RobotContainer {
         joystick.b().whileTrue(mReverseRollerSpin_CMD);
         joystick.b().whileTrue(mReverseTransfer_CMD);
 
-        joystick.povLeft().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
 
-        drivetrain.registerTelemetry(logger::telemeterize);
+        joystick.povLeft().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
     }
 
     public Command getAutonomousCommand() {
         final var idle = new SwerveRequest.Idle();
 
+        // Mutable container for heading capture
+        final Rotation2d[] targetHeading = new Rotation2d[1];
+
         return Commands.sequence(
-                drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
-                drivetrain.applyRequest(() ->
-                        drive.withVelocityX(0.5)
-                                .withVelocityY(0)
-                                .withRotationalRate(0)
-                ).withTimeout(5.0),
-                drivetrain.applyRequest(() -> idle)
-        );
+            // Reset heading
+            drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
+
+            // Capture heading AFTER reset
+            Commands.runOnce(() ->
+                targetHeading[0] = drivetrain.getState().Pose.getRotation().plus(Rotation2d.fromRadians(Math.PI))
+            ),
+
+            // Drive straight with heading hold
+            drivetrain.applyRequest(() ->
+                driveStraight.withVelocityX(0.75)
+                             .withVelocityY(0.0)
+                             .withHeadingPID(6, 0, 1)
+                             .withTargetDirection(targetHeading[0])
+            ).withTimeout(1.75),
+
+            // Stop drivetrain
+            drivetrain.applyRequest(() -> idle).withTimeout(0.05),
+
+            // Wait before feeding
+            Commands.waitSeconds(0.5),
+
+            // Left bumper behavior
+            Commands.parallel(
+                mIntakeSpin_CMD,
+                mRollerSpin_CMD,
+                mTransfer_CMD,
+                mTurretGoToTarget_CMD
+            )
+        )
+        // Shooter runs entire auton
+        .deadlineWith(mCloseShooterSpin_CMD);
     }
 }
