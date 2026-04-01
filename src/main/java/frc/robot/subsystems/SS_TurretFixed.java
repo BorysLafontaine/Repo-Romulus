@@ -86,7 +86,7 @@ public class SS_TurretFixed extends SubsystemBase {
     SmartDashboard.putNumber("Error", error);
     SmartDashboard.putNumber("Integral", integral);
     SmartDashboard.putNumber("Derivative", derivative);
-    SmartDashboard.putNumber("Current pos in deg",  m_turretMotor.getPosition().getValueAsDouble() / ticksPerDeg);
+    SmartDashboard.putNumber("Current pos in deg",  m_turretMotor.getPosition().getValueAsDouble() / degPerRot);
   }
 
   public double calculate(double target, double current, double currentVoltage) {
