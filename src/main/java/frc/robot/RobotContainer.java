@@ -56,6 +56,10 @@ public class RobotContainer {
     private final RollerSpin_CMD mRollerSpin_CMD = new RollerSpin_CMD(mRollers);
     private final ReverseRollerSpin_CMD mReverseRollerSpin_CMD = new ReverseRollerSpin_CMD(mRollers);
 
+    // ✅ LEFT BUMPER GROUP
+    private final LeftBumperGroup_CMD mLeftBumperGroup =
+        new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer);
+
     // Controller
     private final CommandXboxController joystick = new CommandXboxController(0);
 
@@ -65,7 +69,7 @@ public class RobotContainer {
         .withRotationalDeadband(MaxAngularRate * 0.1)
         .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
-    // 🔥 Heading hold drive
+    // Heading hold drive
     private final SwerveRequest.FieldCentricFacingAngle driveStraight =
         new SwerveRequest.FieldCentricFacingAngle()
             .withDeadband(MaxSpeed * 0.1)
@@ -104,9 +108,8 @@ public class RobotContainer {
 
         joystick.rightBumper().toggleOnTrue(mIntakeSpin_CMD);
 
-        joystick.leftBumper().whileTrue(mIntakeSpin_CMD);
-        joystick.leftBumper().whileTrue(mRollerSpin_CMD);
-        joystick.leftBumper().whileTrue(mTransfer_CMD);
+        // ✅ Use group instead of 3 commands
+        joystick.leftBumper().whileTrue(mLeftBumperGroup);
 
         joystick.b().whileTrue(mReverseIntakeSpin_CMD);
         joystick.b().whileTrue(mReverseRollerSpin_CMD);
@@ -120,25 +123,23 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
         final var idle = new SwerveRequest.Idle();
 
-        // Mutable container for heading capture
         final Rotation2d[] targetHeading = new Rotation2d[1];
 
         return Commands.sequence(
             // Reset heading
             drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
 
-            // Capture heading AFTER reset
+            // Capture heading
             Commands.runOnce(() ->
-                targetHeading[0] = drivetrain.getState().Pose.getRotation().plus(Rotation2d.fromRadians(Math.PI))
+                targetHeading[0] = drivetrain.getState().Pose.getRotation()
             ),
 
-            // Drive straight with heading hold
+            // Drive straight
             drivetrain.applyRequest(() ->
                 driveStraight.withVelocityX(0.75)
                              .withVelocityY(0.0)
-                             .withHeadingPID(6, 0, 1)
                              .withTargetDirection(targetHeading[0])
-            ).withTimeout(1.75),
+            ).withTimeout(2.0),
 
             // Stop drivetrain
             drivetrain.applyRequest(() -> idle).withTimeout(0.05),
@@ -146,13 +147,8 @@ public class RobotContainer {
             // Wait before feeding
             Commands.waitSeconds(0.5),
 
-            // Left bumper behavior
-            Commands.parallel(
-                mIntakeSpin_CMD,
-                mRollerSpin_CMD,
-                mTransfer_CMD,
-                mTurretGoToTarget_CMD
-            )
+            // ✅ Use left bumper group in auton
+            mLeftBumperGroup
         )
         // Shooter runs entire auton
         .deadlineWith(mCloseShooterSpin_CMD);

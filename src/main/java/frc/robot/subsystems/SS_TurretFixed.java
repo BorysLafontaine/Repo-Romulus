@@ -59,6 +59,49 @@ public class SS_TurretFixed extends SubsystemBase {
 
   public void turretGoToTarget() {
     double motorRot = m_turretMotor.getPosition().getValueAsDouble();
+    setTargetAngle(0);
+
+    // ✅ Convert motor rotations → turret degrees
+    double currentPos = motorRot * degPerMotorRot;
+
+    double currentVoltage = SmartDashboard.getNumber("battery voltage", 12.0);
+
+    // Clamp target
+    if (targetAngle > 90) {
+      correctedTargetAngle = 90;
+    } else if (targetAngle < -90) {
+      correctedTargetAngle = -90;
+    } else {
+      correctedTargetAngle = targetAngle;
+    }
+
+    m_turretMotor.set(calculate(correctedTargetAngle, currentPos, currentVoltage));
+  }
+
+    public void turretGoToTargetRight() {
+    double motorRot = m_turretMotor.getPosition().getValueAsDouble();
+    setTargetAngle(1.234);
+
+    // ✅ Convert motor rotations → turret degrees
+    double currentPos = motorRot * degPerMotorRot;
+
+    double currentVoltage = SmartDashboard.getNumber("battery voltage", 12.0);
+
+    // Clamp target
+    if (targetAngle > 90) {
+      correctedTargetAngle = 90;
+    } else if (targetAngle < -90) {
+      correctedTargetAngle = -90;
+    } else {
+      correctedTargetAngle = targetAngle;
+    }
+
+    m_turretMotor.set(calculate(correctedTargetAngle, currentPos, currentVoltage));
+  }
+
+    public void turretGoToTargetLeft() {
+    double motorRot = m_turretMotor.getPosition().getValueAsDouble();
+    setTargetAngle(-1.234);
 
     // ✅ Convert motor rotations → turret degrees
     double currentPos = motorRot * degPerMotorRot;
