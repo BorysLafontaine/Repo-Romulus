@@ -4,12 +4,13 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.generated.Constants;
 import frc.robot.generated.Constants.*;
-
-
+import edu.wpi.first.units.measure.Time;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_IntakeMotors extends SubsystemBase {
@@ -24,6 +25,11 @@ public class SS_IntakeMotors extends SubsystemBase {
   public void SpinIRoller(){
     m_IRollerMotor.set(Constants.RobotConstants.IRollerSpeed);
   }
+
+  public void reverseSpinIRoller(){
+    m_IRollerMotor.set(-Constants.RobotConstants.IRollerSpeed);
+  }
+
 
   public void stopIRoller(){
      m_IRollerMotor.stopMotor();

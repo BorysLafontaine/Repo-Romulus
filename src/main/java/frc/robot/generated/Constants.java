@@ -20,10 +20,9 @@ public final class Constants {
   public static final class RobotConstants {
     
     public static final double ShooterSpeed = 0.5;
-    public static final double RollerSpeed = 0.3;
-    public static final double IRollerSpeed = 0.3;
-    public static final double TransferSpeed = 0.3;
-
-
+    public static final double RollerSpeed = 1.0;
+    public static final double IRollerSpeed = 1.0;
+    public static final double IRollerSpeedInv = -1.0;
+    public static final double TransferSpeed = -1.0;
   }
 }

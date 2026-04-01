@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.generated.Constants;
@@ -22,6 +23,10 @@ public class SS_Rollers extends SubsystemBase {
   }
 
   public void spinRoller(){
+    m_RollerMotor.set(-Constants.RobotConstants.RollerSpeed);
+  }
+
+  public void reverseSpinRoller(){
     m_RollerMotor.set(Constants.RobotConstants.RollerSpeed);
   }
 
