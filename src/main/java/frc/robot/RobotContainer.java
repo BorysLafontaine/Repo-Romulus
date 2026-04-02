@@ -3,17 +3,18 @@ package frc.robot;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+
+import org.littletonrobotics.junction.Logger;
 
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.*;
@@ -21,83 +22,155 @@ import frc.robot.commands.*;
 
 public class RobotContainer {
 
-    private SlewRateLimiter xLimiter = new SlewRateLimiter(2);
-    private SlewRateLimiter yLimiter = new SlewRateLimiter(2);
-    private SlewRateLimiter omegaLimiter = new SlewRateLimiter(4.0);
+    // =========================
+    // INPUT FILTERING
+    // =========================
+    private final SlewRateLimiter xLimiter     = new SlewRateLimiter(3);
+    private final SlewRateLimiter yLimiter     = new SlewRateLimiter(3);
+    private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(6);
 
-    private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
-    private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
+    private final double MaxSpeed =
+        TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
 
-    // Subsystems
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    private final double MaxAngularRate =
+        RotationsPerSecond.of(0.75).in(RadiansPerSecond);
 
-    private final SS_Shooter mShooter = new SS_Shooter();
-    private final SS_TurretFixed mTurretFixed = new SS_TurretFixed();
-    private final SS_Intake mIntake = new SS_Intake();
-    private final SS_IntakeMotors mIntakeMotors = new SS_IntakeMotors();
-    private final SS_Transfer mTransfer = new SS_Transfer();
-    private final SS_Rollers mRollers = new SS_Rollers();
+    // =========================
+    // SUBSYSTEMS
+    // =========================
+    private final LEDSubsystem mLedSubsystem = new LEDSubsystem();
 
-    // Commands
-    private final ShooterSpin_CMD mShooterSpin_CMD = new ShooterSpin_CMD(mShooter);
-    private final CloseShooterSpin_CMD mCloseShooterSpin_CMD = new CloseShooterSpin_CMD(mShooter);
-    private final FarShooterSpin_CMD mFarShooterSpin_CMD = new FarShooterSpin_CMD(mShooter);
+    public final CommandSwerveDrivetrain drivetrain =
+        TunerConstants.createDrivetrain();
 
-    private final TurretGoToTarget_CMD mTurretGoToTarget_CMD = new TurretGoToTarget_CMD(mTurretFixed);
+    private final VisionSubsystem vision = new VisionSubsystem();
 
-    private final toggle_intake_CMD mtoggle_intake_CMD = new toggle_intake_CMD(mIntake);
+    private final SS_Shooter       mShooter      = new SS_Shooter();
+    private final SS_TurretFixed   mTurretFixed  = new SS_TurretFixed();
+    private final SS_Intake        mIntake       = new SS_Intake();
+    private final SS_IntakeMotors  mIntakeMotors = new SS_IntakeMotors();
+    private final SS_Transfer      mTransfer     = new SS_Transfer();
+    private final SS_Rollers       mRollers      = new SS_Rollers();
 
-    private final IntakeSpin_CMD mIntakeSpin_CMD = new IntakeSpin_CMD(mIntakeMotors);
-    private final ReverseIntakeSpin_CMD mReverseIntakeSpin_CMD = new ReverseIntakeSpin_CMD(mIntakeMotors);
+    // =========================
+    // COMMANDS
+    // =========================
+    private final ShooterSpin_CMD        mShooterSpin_CMD      = new ShooterSpin_CMD(mShooter);
+    private final CloseShooterSpin_CMD   mCloseShooterSpin_CMD = new CloseShooterSpin_CMD(mShooter);
+    private final FarShooterSpin_CMD     mFarShooterSpin_CMD   = new FarShooterSpin_CMD(mShooter);
 
-    private final Transfer_CMD mTransfer_CMD = new Transfer_CMD(mTransfer);
-    private final ReverseTransfer_CMD mReverseTransfer_CMD = new ReverseTransfer_CMD(mTransfer);
+    private final TurretGoToTarget_CMD mTurretGoToTarget_CMD =
+        new TurretGoToTarget_CMD(mTurretFixed);
 
-    private final RollerSpin_CMD mRollerSpin_CMD = new RollerSpin_CMD(mRollers);
-    private final ReverseRollerSpin_CMD mReverseRollerSpin_CMD = new ReverseRollerSpin_CMD(mRollers);
+    private final toggle_intake_CMD mtoggle_intake_CMD =
+        new toggle_intake_CMD(mIntake);
 
-    // ✅ LEFT BUMPER GROUP
+    private final IntakeSpin_CMD mIntakeSpin_CMD =
+        new IntakeSpin_CMD(mIntakeMotors);
+
+    private final ReverseIntakeSpin_CMD mReverseIntakeSpin_CMD =
+        new ReverseIntakeSpin_CMD(mIntakeMotors);
+
+    private final Transfer_CMD mTransfer_CMD =
+        new Transfer_CMD(mTransfer);
+
+    private final ReverseTransfer_CMD mReverseTransfer_CMD =
+        new ReverseTransfer_CMD(mTransfer);
+
+    private final RollerSpin_CMD mRollerSpin_CMD =
+        new RollerSpin_CMD(mRollers);
+
+    private final ReverseRollerSpin_CMD mReverseRollerSpin_CMD =
+        new ReverseRollerSpin_CMD(mRollers);
+
     private final LeftBumperGroup_CMD mLeftBumperGroup =
         new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer);
 
-    // Controller
-    private final CommandXboxController joystick = new CommandXboxController(0);
+    // =========================
+    // CONTROLLER
+    // =========================
+    private final CommandXboxController joystick =
+        new CommandXboxController(0);
 
-    // Default drive
-    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
-        .withDeadband(MaxSpeed * 0.1)
-        .withRotationalDeadband(MaxAngularRate * 0.1)
-        .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
-    // Heading hold drive
-    private final SwerveRequest.FieldCentricFacingAngle driveStraight =
-        new SwerveRequest.FieldCentricFacingAngle()
-            .withDeadband(MaxSpeed * 0.1)
-            .withRotationalDeadband(MaxAngularRate * 0.1)
+    // =========================
+    // DRIVE REQUESTS
+    // =========================
+    private final SwerveRequest.FieldCentric drive =
+        new SwerveRequest.FieldCentric()
+            .withDeadband(0.05)
+            .withRotationalDeadband(0.05)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
-    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
+    private final SwerveRequest.SwerveDriveBrake brake =
+        new SwerveRequest.SwerveDriveBrake();
 
+    // =========================
+    // CONSTRUCTOR
+    // =========================
     public RobotContainer() {
         configureBindings();
     }
 
+    // =========================
+    // BINDINGS
+    // =========================
     private void configureBindings() {
 
         drivetrain.setDefaultCommand(
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(xLimiter.calculate(-joystick.getLeftY()) * MaxSpeed)
-                     .withVelocityY(yLimiter.calculate(-joystick.getLeftX()) * MaxSpeed)
-                     .withRotationalRate(omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate)
-            )
+            drivetrain.applyRequest(() -> {
+
+                double vx    = xLimiter.calculate(-joystick.getLeftY())  * MaxSpeed;
+                double vy    = yLimiter.calculate(-joystick.getLeftX())  * MaxSpeed;
+                double omega = omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate;
+
+                Logger.recordOutput("Drive/Vx",    vx);
+                Logger.recordOutput("Drive/Vy",    vy);
+                Logger.recordOutput("Drive/Omega", omega);
+
+                return drive.withVelocityX(vx)
+                            .withVelocityY(vy)
+                            .withRotationalRate(omega);
+            })
         );
 
+        // =========================
+        // VISION FUSION LOOP
+        // FIX: was calling the 2-arg addVisionMeasurement, which bypasses
+        //      the custom override in CommandSwerveDrivetrain entirely.
+        //      Now passes std devs explicitly to hit the 3-arg override.
+        // =========================
+        drivetrain.registerTelemetry(state -> {
+
+            var est = vision.getLatestEstimate();
+
+            if (est.isPresent()) {
+
+                var    pose      = est.get().estimatedPose.toPose2d();
+                double timestamp = est.get().timestampSeconds;
+
+                // Base trust: tight XY, ignore heading from vision
+                drivetrain.addVisionMeasurement(
+                    pose,
+                    timestamp,
+                    VecBuilder.fill(0.5, 0.5, 9999)
+                );
+
+                Logger.recordOutput("Vision/Pose", pose);
+            }
+        });
+
+        // =========================
+        // DISABLED MODE
+        // =========================
         final var idle = new SwerveRequest.Idle();
 
         RobotModeTriggers.disabled().whileTrue(
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
+        // =========================
+        // BUTTONS
+        // =========================
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
         joystick.povDown().toggleOnTrue(mCloseShooterSpin_CMD);
         joystick.povUp().toggleOnTrue(mFarShooterSpin_CMD);
@@ -108,7 +181,6 @@ public class RobotContainer {
 
         joystick.rightBumper().toggleOnTrue(mIntakeSpin_CMD);
 
-        // ✅ Use group instead of 3 commands
         joystick.leftBumper().whileTrue(mLeftBumperGroup);
 
         joystick.b().whileTrue(mReverseIntakeSpin_CMD);
@@ -117,40 +189,43 @@ public class RobotContainer {
 
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
 
-        joystick.povLeft().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        joystick.povLeft().onTrue(
+            drivetrain.runOnce(drivetrain::seedFieldCentric)
+        );
+
+        mLedSubsystem.updateLEDs();
     }
 
+    // =========================
+    // AUTON
+    // =========================
     public Command getAutonomousCommand() {
-        final var idle = new SwerveRequest.Idle();
 
+        final var idle = new SwerveRequest.Idle();
         final Rotation2d[] targetHeading = new Rotation2d[1];
 
         return Commands.sequence(
-            // Reset heading
-            drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
 
-            // Capture heading
+            drivetrain.runOnce(() ->
+                drivetrain.seedFieldCentric(Rotation2d.kZero)
+            ),
+
             Commands.runOnce(() ->
                 targetHeading[0] = drivetrain.getState().Pose.getRotation()
             ),
 
-            // Drive straight
             drivetrain.applyRequest(() ->
-                driveStraight.withVelocityX(0.75)
-                             .withVelocityY(0.0)
-                             .withTargetDirection(targetHeading[0])
+                drive.withVelocityX(1.0)
+                     .withVelocityY(0.0)
+                     .withRotationalRate(0.0)
             ).withTimeout(2.0),
 
-            // Stop drivetrain
             drivetrain.applyRequest(() -> idle).withTimeout(0.05),
 
-            // Wait before feeding
             Commands.waitSeconds(0.5),
 
-            // ✅ Use left bumper group in auton
             mLeftBumperGroup
         )
-        // Shooter runs entire auton
         .deadlineWith(mCloseShooterSpin_CMD);
     }
 }
