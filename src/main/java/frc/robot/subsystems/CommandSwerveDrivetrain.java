@@ -33,36 +33,13 @@ import frc.robot.subsystems.VisionSubsystem.VisionEstimate;
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
 
     // =========================
-    // CONSTANTS
+    // ALLIANCE PERSPECTIVE
+    // Blue = driver pushes forward → robot moves toward Red wall (field +X).
+    // Red  = driver pushes forward → robot moves toward Blue wall (field -X).
+    // ⚠️ This ONLY affects field-centric drive direction, not pose coordinates.
     // =========================
-
-    // Hard rejection: vision pose too far from odometry prediction
-    private static final double MAX_VISION_ERROR  = 1.5;  // meters
-
-    // Angular rate above which vision is unreliable (camera motion blur)
-    private static final double MAX_ANGULAR_RATE  = 2.0;  // rad/s
-
-    // Std dev base values — scaled dynamically per estimate
-    // XY trust = BASE_XY_STD * avgDist / tagCount * (1 + ambiguityScale * avgAmbiguity)
-    private static final double BASE_XY_STD       = 0.04;
-    private static final double AMBIGUITY_SCALE   = 4.0;
-    private static final double DIST_SCALE        = 0.3;  // extra penalty per meter
-
-    // Heading is never trusted from vision alone
-    private static final double HEADING_STD       = 9999.0;
-
-    // =========================
-    // PREDICTIVE LOCALIZATION CONSTANTS
-    // When tags are lost, odometry drifts. When they reappear, we scale up
-    // std devs proportionally to how long we were blind, so the Kalman filter
-    // is skeptical of measurements that land far from the dead-reckoned prediction.
-    // =========================
-    private static final double OCCLUSION_DECAY   = 0.4;  // std dev multiplier per second blind
-    private static final double MAX_OCCLUSION_MUL = 4.0;  // cap on occlusion penalty
-
-    // =========================
-    private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
-    private static final Rotation2d kRedAlliancePerspectiveRotation  = Rotation2d.k180deg;
+    private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.k180deg;
+    private static final Rotation2d kRedAlliancePerspectiveRotation  = Rotation2d.kZero;
     private boolean m_hasAppliedOperatorPerspective = false;
 
     private final SwerveRequest.ApplyRobotSpeeds driveRequest =
@@ -72,21 +49,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     // LOGGING
     // =========================
     private final DataLog log = DataLogManager.getLog();
-
     private final DoubleArrayLogEntry odomLog   = new DoubleArrayLogEntry(log, "/Swerve/OdomPose");
     private final DoubleArrayLogEntry visionLog = new DoubleArrayLogEntry(log, "/Swerve/VisionPose");
-    private final DoubleLogEntry      errorLog  = new DoubleLogEntry(log, "/Swerve/VisionError");
 
-    // Last pose that was actually fused (post all checks)
-    private volatile Pose2d lastAcceptedVisionPose  = new Pose2d();
-    // Last pose attempted (used for Field2d ghost — always live)
-    private volatile Pose2d lastAttemptedVisionPose = new Pose2d();
-
-    // =========================
-    // PREDICTIVE LOCALIZATION STATE
-    // =========================
-    private double lastTagTimestampSeconds = 0;
-    private boolean hadTagsLastCycle       = false;
+    private Pose2d lastVisionPose = new Pose2d();
 
     // =========================
     // FIELD2D (Elastic Dashboard)
@@ -195,103 +161,74 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Pose2d pose = getState().Pose;
 
         field.setRobotPose(pose);
-        field.getObject("VisionPose").setPose(lastAttemptedVisionPose);
-        field.getObject("VisionAccepted").setPose(lastAcceptedVisionPose);
+        field.getObject("VisionPose").setPose(lastVisionPose);
 
         odomLog.append(new double[]{
             pose.getX(), pose.getY(), pose.getRotation().getRadians()
         });
 
-        double error = pose.getTranslation()
-            .getDistance(lastAcceptedVisionPose.getTranslation());
-
-        errorLog.append(error);
+        // Publish current pose heading for turret debugging
+        SmartDashboard.putNumber("Odometry/X",       pose.getX());
+        SmartDashboard.putNumber("Odometry/Y",       pose.getY());
+        SmartDashboard.putNumber("Odometry/HeadDeg", pose.getRotation().getDegrees());
     }
 
     // =========================
-    // MULTI-ESTIMATE FUSION
-    // Called from RobotContainer with all camera estimates each cycle.
-    // Each estimate is fused independently with its own std devs.
+    // VISION MEASUREMENT FUSION
+    //
+    // Uses the drivetrain's built-in Kalman filter (addVisionMeasurement).
+    // XY standard deviation scales with distance² — farther tags trusted less.
+    // Rotation is never trusted from vision (huge stddev) — gyro handles heading.
+    //
+    // This is called from the telemetry callback (odometry thread), so it runs
+    // at the odometry frequency (250 Hz on CAN FD) — vision frames are typically
+    // 20–50 Hz so most calls are no-ops (estimator returns empty Optional).
     // =========================
     public void addVisionMeasurements(List<VisionEstimate> estimates) {
 
-        boolean hasTagsThisCycle = !estimates.isEmpty();
-
-        // Track occlusion duration for predictive trust scaling
-        double now = Utils.fpgaToCurrentTime(Timer.getFPGATimestamp());
-        if (hasTagsThisCycle) {
-            lastTagTimestampSeconds = now;
-        }
-        hadTagsLastCycle = hasTagsThisCycle;
-
-        double occlusionSeconds = now - lastTagTimestampSeconds;
+        boolean hasTags = !estimates.isEmpty();
+        SmartDashboard.putBoolean("Vision/TagsVisible", hasTags);
 
         for (VisionEstimate est : estimates) {
-            fuseEstimate(est, occlusionSeconds);
-        }
 
-        SmartDashboard.putBoolean("Vision/TagsVisible", hasTagsThisCycle);
-        SmartDashboard.putNumber("Vision/OcclusionSeconds", occlusionSeconds);
+            double dist = Math.max(est.avgDistanceMeters(), 0.1);
+
+            // XY trust: 0.05m stddev at 1m, 0.5m at ~3m, 2.0m at 6m (quadratic growth)
+            double xyStdDev  = 0.05 * dist * dist;
+
+            // Never correct heading from vision — trust IMU/gyro instead
+            double rotStdDev = 9999.0;
+
+            addVisionMeasurement(
+                est.pose(),
+                est.timestampSeconds(),
+                VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev)
+            );
+
+            lastVisionPose = est.pose();
+
+            visionLog.append(new double[]{
+                est.pose().getX(), est.pose().getY(), est.pose().getRotation().getRadians()
+            });
+
+            SmartDashboard.putNumber("Vision/PoseX",    est.pose().getX());
+            SmartDashboard.putNumber("Vision/PoseY",    est.pose().getY());
+            SmartDashboard.putNumber("Vision/Dist",     dist);
+            SmartDashboard.putNumber("Vision/XYStdDev", xyStdDev);
+        }
     }
 
     // =========================
-    // FUSE ONE ESTIMATE
+    // MANUAL HARD RESET (Start button / teleop-enable)
+    // Instantly snaps odometry to vision pose — use when stationary with clear tag view.
     // =========================
-    private void fuseEstimate(VisionEstimate est, double occlusionSeconds) {
-
-        lastAttemptedVisionPose = est.pose();
-
-        // --- Angular rate gate ---
-        double omega = Math.abs(getState().Speeds.omegaRadiansPerSecond);
-        if (omega > MAX_ANGULAR_RATE) return;
-
-        // --- Sample odometry at measurement timestamp for latency compensation ---
-        Optional<Pose2d> odomAtTime = samplePoseAt(est.timestampSeconds());
-        if (odomAtTime.isEmpty()) return;
-
-        double positionError = est.pose().getTranslation()
-            .getDistance(odomAtTime.get().getTranslation());
-
-        // --- Hard rejection ---
-        if (positionError > MAX_VISION_ERROR) return;
-
-        // =========================
-        // DYNAMIC STD DEVS
-        // Tighter trust when: more tags, closer distance, lower ambiguity.
-        // Looser trust when: long occlusion (dead-reckoning drift unknown).
-        // =========================
-        double xyStd = (BASE_XY_STD + est.avgDistanceMeters() * DIST_SCALE)
-                     / est.tagCount()
-                     * (1.0 + AMBIGUITY_SCALE * est.avgAmbiguity());
-
-        // Occlusion penalty: the longer we were blind, the less we trust
-        // the first few measurements back — odometry may have drifted significantly
-        double occlusionMultiplier = 1.0 + Math.min(
-            occlusionSeconds * OCCLUSION_DECAY,
-            MAX_OCCLUSION_MUL
-        );
-        xyStd *= occlusionMultiplier;
-
-        Matrix<N3, N1> stdDevs = VecBuilder.fill(xyStd, xyStd, HEADING_STD);
-
-        // --- Log ---
-        lastAcceptedVisionPose = est.pose();
-
-        visionLog.append(new double[]{
-            est.pose().getX(),
-            est.pose().getY(),
-            est.pose().getRotation().getRadians()
-        });
-
-        SmartDashboard.putNumber("Vision/XYStd",        xyStd);
-        SmartDashboard.putNumber("Vision/OcclusionMul", occlusionMultiplier);
-
-        // --- Fuse into Kalman filter ---
-        super.addVisionMeasurement(
-            est.pose(),
-            Utils.fpgaToCurrentTime(est.timestampSeconds()),
-            stdDevs
-        );
+    public boolean hardResetPoseFromVision(VisionEstimate est) {
+        // Keep gyro heading, override only XY from vision
+        Pose2d resetTo = new Pose2d(est.pose().getTranslation(), getState().Pose.getRotation());
+        resetPose(resetTo);
+        lastVisionPose = resetTo;
+        SmartDashboard.putBoolean("Vision/ManualResetTriggered", true);
+        return true;
     }
 
     // =========================

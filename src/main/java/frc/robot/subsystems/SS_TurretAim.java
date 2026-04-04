@@ -17,8 +17,6 @@ public class SS_TurretAim extends SubsystemBase {
     // ⚠️ Set your CAN ID and bus name
     // =========================
     private static final int    MOTOR_ID = 40;
-    private static final String CANBUS   = "rio";
-
     // =========================
     // TURRET PIVOT OFFSET FROM ROBOT CENTER
     // ⚠️ Measure these on the physical robot (meters).
@@ -27,7 +25,7 @@ public class SS_TurretAim extends SubsystemBase {
     // Used in TurretAimAtHub_CMD to compute angle from the actual pivot,
     // not the robot center — matters most when the turret is far off-center.
     // =========================
-    public static final double TURRET_OFFSET_X = -6.5; // ⚠️ fill in
+    public static final double TURRET_OFFSET_X = -0.1651; // ⚠️ fill in
     public static final double TURRET_OFFSET_Y = 0.0; // ⚠️ fill in
 
     // =========================
@@ -42,8 +40,8 @@ public class SS_TurretAim extends SubsystemBase {
     // ⚠️ Going past these WILL rip the cable chain
     // Stored as mechanism rotations (degrees / 360)
     // =========================
-    public  static final double SOFT_MIN_DEG = -270.0;
-    public  static final double SOFT_MAX_DEG =   90.0;
+    public  static final double SOFT_MIN_DEG = -95.0;
+    public  static final double SOFT_MAX_DEG = 275.0;
     private static final double SOFT_MIN_ROT = SOFT_MIN_DEG / 360.0; // -0.75
     private static final double SOFT_MAX_ROT = SOFT_MAX_DEG / 360.0; //  0.25
 
@@ -52,21 +50,21 @@ public class SS_TurretAim extends SubsystemBase {
     // Tune kP first (increase until oscillation, then back off).
     // CRUISE/ACCEL in mechanism rotations/s and rotations/s²
     // =========================
-    private static final double kP         = 1.0;
+    private static final double kP         = 80.0;
     private static final double kI         =  0.0;
     private static final double kD         =  2.0;
     private static final double kS         =  0.25; // static friction feedforward (V)
-    private static final double CRUISE_RPS =  1.5;  // rot/s  — tune for your robot
-    private static final double ACCEL_RPS2 =  3.0;  // rot/s²
-    private static final double JERK_RPS3  = 30.0;  // rot/s³ — smooths start/stop
+    private static final double CRUISE_RPS =  3.0;  // rot/s  — tune for your robot
+    private static final double ACCEL_RPS2 = 12.0;  // rot/s²
+    private static final double JERK_RPS3  = 60.0;  // rot/s³ — smooths start/stop
 
     // On-target tolerance
-    public static final double ON_TARGET_DEG = 2.0;
+    public static final double ON_TARGET_DEG = 1.0;
 
     // =========================
     // MOTOR + REQUEST
     // =========================
-    private final TalonFX motor = new TalonFX(MOTOR_ID, CANBUS);
+    private final TalonFX motor = new TalonFX(MOTOR_ID);
 
     // MotionMagicVoltage gives smooth profiled motion to a position
     private final MotionMagicVoltage positionRequest =
@@ -80,8 +78,8 @@ public class SS_TurretAim extends SubsystemBase {
         var cfg = new TalonFXConfiguration();
 
         // Motor is physically reversed
-        cfg.MotorOutput.Inverted    = InvertedValue.Clockwise_Positive;
-        cfg.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        cfg.MotorOutput.Inverted    = InvertedValue.CounterClockwise_Positive;
+        cfg.MotorOutput.NeutralMode = NeutralModeValue.Coast;
 
         // Tell Phoenix the sensor-to-mechanism ratio so position/velocity
         // signals are already in mechanism (turret) rotations

@@ -16,7 +16,6 @@ public class VisionSubsystem extends SubsystemBase {
 
     // =========================
     // VISION ESTIMATE RECORD
-    // Carries all quality metrics so the drivetrain can weight each estimate
     // =========================
     public record VisionEstimate(
         Pose2d pose,
@@ -27,18 +26,6 @@ public class VisionSubsystem extends SubsystemBase {
     ) {}
 
     // =========================
-    // NOISE FILTER CONFIG
-    // =========================
-    private static final int    HISTORY_SIZE         = 8;    // poses kept per camera
-    private static final double OUTLIER_THRESHOLD    = 0.5;  // meters from median → reject
-    private static final double MAX_POSE_JUMP        = 1.0;  // meters between consecutive frames
-    private static final double MAX_AMBIGUITY_MULTI  = 0.20; // multi-tag ambiguity cap
-    private static final double MAX_AMBIGUITY_SINGLE = 0.15; // tighter cap for single-tag fallback
-    // No hard distance limit for single tags — the dynamic std dev formula
-    // already widens trust proportionally to distance, so a far single tag
-    // gets accepted but weighted loosely rather than dropped entirely.
-
-    // =========================
     // CAMERAS
     // =========================
     private final PhotonCamera camBackLeft  = new PhotonCamera("LeftCam");
@@ -46,23 +33,25 @@ public class VisionSubsystem extends SubsystemBase {
 
     // =========================
     // FIELD LAYOUT
+    // Field: FE-2026 Rebuilt Welded  651.22" × 317.69" = 16.541m × 8.069m
     // =========================
     private final AprilTagFieldLayout fieldLayout =
-        AprilTagFields.k2026RebuiltAndymark.loadAprilTagLayoutField();
+        AprilTagFields.k2026RebuiltWelded.loadAprilTagLayoutField();
 
     // =========================
-    // ROBOT TO CAMERA TRANSFORMS
-    // Back-left:  X=-0.321, Y=+0.321, Z=0.40m, yaw=135°,  pitch=-15° (tilted up)
-    // Back-right: X=-0.321, Y=-0.321, Z=0.40m, yaw=-135°, pitch=-15° (tilted up)
+    // ROBOT-TO-CAMERA TRANSFORMS
+    // Back-left  (LeftCam):  X=-0.321m, Y=+0.321m, Z=0.42m, yaw=315°, pitch=-15°
+    // Back-right (RightCam): X=-0.321m, Y=-0.321m, Z=0.42m, yaw=225°, pitch=-15°
+    // ⚠️ Positive yaw = CCW when viewed from above (WPILib convention).
     // =========================
     private final Transform3d robotToBackLeftCam = new Transform3d(
-        new Translation3d(-0.321, 0.321, 0.40),
-        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(135))
+        new Translation3d(-0.321, 0.321, 0.42),
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(315))
     );
 
     private final Transform3d robotToBackRightCam = new Transform3d(
-        new Translation3d(-0.321, -0.321, 0.40),
-        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-135))
+        new Translation3d(-0.321, -0.321, 0.42),
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(225))
     );
 
     // =========================
@@ -70,15 +59,6 @@ public class VisionSubsystem extends SubsystemBase {
     // =========================
     private final PhotonPoseEstimator backLeftEstimator;
     private final PhotonPoseEstimator backRightEstimator;
-
-    // =========================
-    // NOISE FILTER STATE
-    // Circular history buffer + last accepted pose, per camera
-    // =========================
-    private final ArrayDeque<Pose2d> leftHistory  = new ArrayDeque<>(HISTORY_SIZE);
-    private final ArrayDeque<Pose2d> rightHistory = new ArrayDeque<>(HISTORY_SIZE);
-    private Pose2d lastLeftPose  = null;
-    private Pose2d lastRightPose = null;
 
     // =========================
     // CONSTRUCTOR
@@ -90,46 +70,47 @@ public class VisionSubsystem extends SubsystemBase {
             PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
             robotToBackLeftCam
         );
+        backLeftEstimator.setMultiTagFallbackStrategy(
+            PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY
+        );
 
         backRightEstimator = new PhotonPoseEstimator(
             fieldLayout,
             PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
             robotToBackRightCam
         );
-
-        backLeftEstimator.setMultiTagFallbackStrategy(
-            PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY
-        );
-
         backRightEstimator.setMultiTagFallbackStrategy(
             PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY
         );
     }
 
     // =========================
+    // REFERENCE POSE (updated each cycle from drivetrain)
+    // Lets the single-tag estimator pick the correct pose solution.
+    // Without this, LOWEST_AMBIGUITY returns one of two mirror solutions randomly.
+    // =========================
+    public void setReferencePose(Pose2d pose) {
+        backLeftEstimator.setReferencePose(pose);
+        backRightEstimator.setReferencePose(pose);
+    }
+
+    // =========================
+    // SINGLE-TAG AMBIGUITY THRESHOLD
+    // PhotonVision ambiguity < 0.2 → pose is trustworthy enough to use.
+    // 0.2–1.0 → two solutions are too similar to distinguish reliably → reject.
+    // =========================
+    private static final double MAX_SINGLE_TAG_AMBIGUITY = 0.2;
+
+    // =========================
     // MAIN PUBLIC API
-    // Returns ALL valid estimates from both cameras.
-    // Caller fuses every entry independently — true multi-camera localization.
+    // Returns every valid estimate — filters single-tag high-ambiguity poses.
     // =========================
     public List<VisionEstimate> getAllEstimates() {
 
         List<VisionEstimate> out = new ArrayList<>();
 
-        Optional<VisionEstimate> left = processCamera(
-            camBackLeft, backLeftEstimator, leftHistory, lastLeftPose, "Left"
-        );
-        left.ifPresent(e -> {
-            out.add(e);
-            lastLeftPose = e.pose();
-        });
-
-        Optional<VisionEstimate> right = processCamera(
-            camBackRight, backRightEstimator, rightHistory, lastRightPose, "Right"
-        );
-        right.ifPresent(e -> {
-            out.add(e);
-            lastRightPose = e.pose();
-        });
+        processCamera(camBackLeft,  backLeftEstimator,  "Left" ).ifPresent(out::add);
+        processCamera(camBackRight, backRightEstimator, "Right").ifPresent(out::add);
 
         Logger.recordOutput("Vision/EstimateCount", out.size());
 
@@ -137,61 +118,43 @@ public class VisionSubsystem extends SubsystemBase {
     }
 
     // =========================
+    // BEST ESTIMATE (Start-button hard reset)
+    // =========================
+    public Optional<VisionEstimate> getHighConfidenceEstimate() {
+        return getAllEstimates().stream()
+            .min(Comparator.comparingDouble(VisionEstimate::avgAmbiguity));
+    }
+
+    // =========================
     // PROCESS ONE CAMERA
-    // Gate → jump filter → median outlier filter → score → emit
+    // getAllUnreadResults() returns only frames not yet consumed — avoids the
+    // estimator silently skipping repeated getLatestResult() calls with the
+    // same timestamp. We take the most recent unread frame.
     // =========================
     private Optional<VisionEstimate> processCamera(
             PhotonCamera        camera,
             PhotonPoseEstimator estimator,
-            ArrayDeque<Pose2d>  history,
-            Pose2d              lastPose,
             String              name) {
 
-        var camResult = camera.getLatestResult();
-        var est       = estimator.update(camResult);
+        var unread = camera.getAllUnreadResults();
+        if (unread.isEmpty()) return Optional.empty();
 
+        var est = estimator.update(unread.get(unread.size() - 1));
         if (est.isEmpty()) return Optional.empty();
 
         List<PhotonTrackedTarget> targets = est.get().targetsUsed;
         if (targets.isEmpty()) return Optional.empty();
 
-        // --- Basic gate: ambiguity + single-tag distance ---
-        if (!passesBasicGate(targets)) {
-            Logger.recordOutput("Vision/" + name + "/Rejected", "basic gate");
-            return Optional.empty();
-        }
-
         Pose2d pose      = est.get().estimatedPose.toPose2d();
         double timestamp = est.get().timestampSeconds;
 
-        // --- Jump filter: reject teleports between consecutive frames ---
-        if (lastPose != null) {
-            double jump = pose.getTranslation().getDistance(lastPose.getTranslation());
-            if (jump > MAX_POSE_JUMP) {
-                Logger.recordOutput("Vision/" + name + "/Rejected",
-                    "jump " + String.format("%.2f", jump) + "m");
-                return Optional.empty();
-            }
+        // Sanity: discard poses outside the field boundary
+        if (pose.getX() < 0 || pose.getX() > 16.54 ||
+            pose.getY() < 0 || pose.getY() > 8.07) {
+            Logger.recordOutput("Vision/" + name + "/Rejected", "out of bounds");
+            return Optional.empty();
         }
 
-        // --- Median outlier filter: reject if far from recent pose cloud ---
-        // Needs at least 3 samples for a meaningful median
-        if (history.size() >= 3) {
-            double medX = median(history.stream().mapToDouble(Pose2d::getX).toArray());
-            double medY = median(history.stream().mapToDouble(Pose2d::getY).toArray());
-            double dev  = Math.hypot(pose.getX() - medX, pose.getY() - medY);
-            if (dev > OUTLIER_THRESHOLD) {
-                Logger.recordOutput("Vision/" + name + "/Rejected",
-                    "outlier " + String.format("%.2f", dev) + "m from median");
-                return Optional.empty();
-            }
-        }
-
-        // --- Update history ---
-        if (history.size() >= HISTORY_SIZE) history.pollFirst();
-        history.addLast(pose);
-
-        // --- Compute quality metrics for drivetrain weighting ---
         double avgDist = targets.stream()
             .mapToDouble(t -> t.getBestCameraToTarget().getTranslation().getNorm())
             .average().orElse(999.0);
@@ -199,6 +162,13 @@ public class VisionSubsystem extends SubsystemBase {
         double avgAmb = targets.stream()
             .mapToDouble(PhotonTrackedTarget::getPoseAmbiguity)
             .average().orElse(999.0);
+
+        // Single-tag poses have two mirror solutions; reject if ambiguity is too high
+        // to distinguish them. Multi-tag PNP is unambiguous so skip this check.
+        if (targets.size() == 1 && avgAmb > MAX_SINGLE_TAG_AMBIGUITY) {
+            Logger.recordOutput("Vision/" + name + "/Rejected", "high ambiguity " + avgAmb);
+            return Optional.empty();
+        }
 
         Logger.recordOutput("Vision/" + name + "/Pose",     pose);
         Logger.recordOutput("Vision/" + name + "/TagCount", targets.size());
@@ -208,36 +178,5 @@ public class VisionSubsystem extends SubsystemBase {
         return Optional.of(
             new VisionEstimate(pose, timestamp, targets.size(), avgDist, avgAmb)
         );
-    }
-
-    // =========================
-    // BASIC GATE
-    // Single-tag fallback: accepted at any distance but uses a tighter ambiguity
-    // cap (0.15) since there is no second tag to cross-check the pose against.
-    // Multi-tag: slightly relaxed ambiguity cap (0.20) — geometry redundancy
-    // compensates for individual tag pose uncertainty.
-    // =========================
-    private boolean passesBasicGate(List<PhotonTrackedTarget> targets) {
-
-        double ambiguityCap = targets.size() == 1
-            ? MAX_AMBIGUITY_SINGLE
-            : MAX_AMBIGUITY_MULTI;
-
-        for (var t : targets) {
-            if (t.getPoseAmbiguity() > ambiguityCap) return false;
-        }
-
-        return true;
-    }
-
-    // =========================
-    // MEDIAN HELPER
-    // =========================
-    private double median(double[] vals) {
-        Arrays.sort(vals);
-        int n = vals.length;
-        return (n % 2 == 0)
-            ? (vals[n / 2 - 1] + vals[n / 2]) / 2.0
-            : vals[n / 2];
     }
 }

@@ -68,7 +68,7 @@ public class RobotContainer {
 
     // Hub aiming — robot pose is sourced live from drivetrain odometry
     private final TurretAimAtHub_CMD mTurretAimAtHub_CMD =
-        new TurretAimAtHub_CMD(mTurretAim, () -> drivetrain.getState().Pose);
+        new TurretAimAtHub_CMD(mTurretAim, drivetrain);
 
     private final toggle_intake_CMD mtoggle_intake_CMD =
         new toggle_intake_CMD(mIntake);
@@ -163,7 +163,7 @@ public class RobotContainer {
             new TurretGoToTarget_CMD(mTurretFixed));
 
         NamedCommands.registerCommand("TurretAimHub",
-            new TurretAimAtHub_CMD(mTurretAim, () -> drivetrain.getState().Pose));
+            new TurretAimAtHub_CMD(mTurretAim, drivetrain));
     }
 
     // =========================
@@ -191,10 +191,13 @@ public class RobotContainer {
         // =========================
         // VISION FUSION LOOP
         // getAllEstimates() returns one entry per camera that passed all filters.
-        // addVisionMeasurements() fuses each independently with per-estimate std devs
-        // and applies predictive occlusion scaling.
+        // addVisionMeasurements() hard-resets pose every cycle when tags are visible.
+        // Falls back to pure odometry when no tags are seen.
         // =========================
         drivetrain.registerTelemetry(state -> {
+
+            // Keep estimators aligned to current odometry so single-tag picks the right solution
+            vision.setReferencePose(state.Pose);
 
             var estimates = vision.getAllEstimates();
 
@@ -215,6 +218,17 @@ public class RobotContainer {
         RobotModeTriggers.disabled().whileTrue(
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
+
+        // =========================
+        // AUTO POSE RESET ON TELEOP ENABLE
+        // When teleop begins, immediately hard-reset from vision if a
+        // high-confidence multi-tag estimate is available.  This corrects
+        // any odometry drift that built up during auto or while disabled.
+        // =========================
+        RobotModeTriggers.teleop().onTrue(Commands.runOnce(() ->
+            vision.getHighConfidenceEstimate()
+                  .ifPresent(drivetrain::hardResetPoseFromVision)
+        ));
 
         // =========================
         // BUTTONS
@@ -250,6 +264,18 @@ public class RobotContainer {
         joystick.povLeft().onTrue(
             drivetrain.runOnce(drivetrain::seedFieldCentric)
         );
+
+        // =========================
+        // HARD POSE RESET FROM VISION
+        // Start button: instantly snap odometry to the camera's pose estimate
+        // when at least 2 tags are visible with high confidence.
+        // Use this when you know the robot is stationary and tags are clearly
+        // in view — e.g. at the start of a match or after a collision.
+        // =========================
+        joystick.start().onTrue(Commands.runOnce(() ->
+            vision.getHighConfidenceEstimate()
+                  .ifPresent(drivetrain::hardResetPoseFromVision)
+        ));
 
         mLedSubsystem.updateLEDs();
     }
