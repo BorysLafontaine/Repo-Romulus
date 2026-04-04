@@ -19,8 +19,8 @@ public class VisionSubsystem extends SubsystemBase {
     // =========================
     // CAMERAS
     // =========================
-    private final PhotonCamera camFront = new PhotonCamera("frontCam");
-    private final PhotonCamera camBack  = new PhotonCamera("backCam");
+    private final PhotonCamera camBackLeft  = new PhotonCamera("LeftCam");
+    private final PhotonCamera camBackRight = new PhotonCamera("RightCam");
 
     // =========================
     // FIELD LAYOUT
@@ -30,16 +30,19 @@ public class VisionSubsystem extends SubsystemBase {
 
     // =========================
     // ROBOT TO CAMERA TRANSFORMS
-    // ⚠️ MUST BE MEASURED PRECISELY
+    // Back-left corner:  X = -0.321 (back), Y = +0.321 (left),  Z = 0.40m
+    // Back-right corner: X = -0.321 (back), Y = -0.321 (right), Z = 0.40m
+    // Yaw:   ±135° from forward (facing out the back corners)
+    // Pitch: -15°  (tilted upward to see higher tags)
     // =========================
-    private final Transform3d robotToFrontCam = new Transform3d(
-        new Translation3d(0.25, 0.0, 0.20),
-        new Rotation3d(0, 0, 0)
+    private final Transform3d robotToBackLeftCam = new Transform3d(
+        new Translation3d(-0.321, 0.321, 0.40),
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(135))
     );
 
-    private final Transform3d robotToBackCam = new Transform3d(
-        new Translation3d(-0.25, 0.0, 0.20),
-        new Rotation3d(0, Math.PI, Math.PI)
+    private final Transform3d robotToBackRightCam = new Transform3d(
+        new Translation3d(-0.321, -0.321, 0.40),
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-135))
     );
 
     // =========================
@@ -47,29 +50,28 @@ public class VisionSubsystem extends SubsystemBase {
     // FIX: PhotonPoseEstimator no longer takes a PhotonCamera in its constructor
     //      as of PhotonVision 2025+. Pass only the transform.
     // =========================
-    private final PhotonPoseEstimator frontEstimator;
-    private final PhotonPoseEstimator backEstimator;
+    private final PhotonPoseEstimator backLeftEstimator;
+    private final PhotonPoseEstimator backRightEstimator;
 
     public VisionSubsystem() {
 
-        frontEstimator = new PhotonPoseEstimator(
+        backLeftEstimator = new PhotonPoseEstimator(
             fieldLayout,
             PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-            robotToFrontCam
+            robotToBackLeftCam
         );
 
-        backEstimator = new PhotonPoseEstimator(
+        backRightEstimator = new PhotonPoseEstimator(
             fieldLayout,
             PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-            robotToBackCam
+            robotToBackRightCam
         );
 
-        // fallback if multi-tag fails
-        frontEstimator.setMultiTagFallbackStrategy(
+        backLeftEstimator.setMultiTagFallbackStrategy(
             PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY
         );
 
-        backEstimator.setMultiTagFallbackStrategy(
+        backRightEstimator.setMultiTagFallbackStrategy(
             PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY
         );
     }
@@ -79,21 +81,18 @@ public class VisionSubsystem extends SubsystemBase {
     // =========================
     public Optional<EstimatedRobotPose> getLatestEstimate() {
 
-        Optional<EstimatedRobotPose> front = updateEstimator(camFront, frontEstimator);
-        Optional<EstimatedRobotPose> back  = updateEstimator(camBack,  backEstimator);
+        Optional<EstimatedRobotPose> left  = updateEstimator(camBackLeft,  backLeftEstimator);
+        Optional<EstimatedRobotPose> right = updateEstimator(camBackRight, backRightEstimator);
 
-        // =========================
-        // BEST SELECTION LOGIC
-        // =========================
-        if (front.isPresent() && back.isPresent()) {
+        if (left.isPresent() && right.isPresent()) {
 
-            double frontScore = score(front.get());
-            double backScore  = score(back.get());
+            double leftScore  = score(left.get());
+            double rightScore = score(right.get());
 
-            return frontScore > backScore ? front : back;
+            return leftScore > rightScore ? left : right;
         }
 
-        return front.isPresent() ? front : back;
+        return left.isPresent() ? left : right;
     }
 
     // =========================

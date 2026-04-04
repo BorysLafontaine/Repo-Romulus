@@ -3,7 +3,6 @@ package frc.robot;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 
@@ -145,17 +144,13 @@ public class RobotContainer {
 
             if (est.isPresent()) {
 
-                var    pose      = est.get().estimatedPose.toPose2d();
-                double timestamp = est.get().timestampSeconds;
+                var pose      = est.get().estimatedPose.toPose2d();
+                var targets   = est.get().targetsUsed;
 
-                // Base trust: tight XY, ignore heading from vision
-                drivetrain.addVisionMeasurement(
-                    pose,
-                    timestamp,
-                    VecBuilder.fill(0.5, 0.5, 9999)
-                );
+                drivetrain.resetPose(pose);
 
-                Logger.recordOutput("Vision/Pose", pose);
+                Logger.recordOutput("Vision/Pose",     pose);
+                Logger.recordOutput("Vision/TagCount", targets.size());
             }
         });
 

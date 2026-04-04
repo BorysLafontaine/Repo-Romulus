@@ -19,6 +19,8 @@ import edu.wpi.first.math.numbers.*;
 
 import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.*;
 
 import edu.wpi.first.util.datalog.*;
@@ -57,9 +59,15 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final DoubleLogEntry errorLog =
         new DoubleLogEntry(log, "/Swerve/VisionError");
 
-    // FIX: was updated before rejection checks, so rejected poses corrupted the
-    //      error log. Now only updated after a measurement is actually fused.
-    private Pose2d lastVisionPose = new Pose2d();
+    // Last pose that passed all gates and was fused (used for error logging)
+    private volatile Pose2d lastAcceptedVisionPose  = new Pose2d();
+    // Last pose attempted regardless of rejection (used for Field2d ghost)
+    private volatile Pose2d lastAttemptedVisionPose = new Pose2d();
+
+    // =========================
+    // FIELD2D (Elastic Dashboard)
+    // =========================
+    private final Field2d field = new Field2d();
 
     // =========================
     // CONSTRUCTORS
@@ -70,6 +78,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     ) {
         super(drivetrainConstants, modules);
         DataLogManager.start();
+        SmartDashboard.putData("Field", field);
     }
 
     public CommandSwerveDrivetrain(
@@ -79,6 +88,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     ) {
         super(drivetrainConstants, odometryUpdateFrequency, modules);
         DataLogManager.start();
+        SmartDashboard.putData("Field", field);
     }
 
     public CommandSwerveDrivetrain(
@@ -90,6 +100,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     ) {
         super(drivetrainConstants, odometryUpdateFrequency, odomStd, visionStd, modules);
         DataLogManager.start();
+        SmartDashboard.putData("Field", field);
     }
 
     // =========================
@@ -161,6 +172,11 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         Pose2d pose = getState().Pose;
 
+        // Update field widget (odometry pose)
+        field.setRobotPose(pose);
+        // Ghost shows every vision attempt — updates even when rejected
+        field.getObject("VisionPose").setPose(lastAttemptedVisionPose);
+
         odomLog.append(new double[]{
             pose.getX(),
             pose.getY(),
@@ -169,7 +185,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         // Error is against the last *accepted* vision pose (post-fix)
         double error = pose.getTranslation()
-            .getDistance(lastVisionPose.getTranslation());
+            .getDistance(lastAcceptedVisionPose.getTranslation());
 
         errorLog.append(error);
     }
@@ -183,6 +199,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         double timestampSeconds,
         Matrix<N3, N1> stdDevs
     ) {
+        // Always record the attempt so Field2d ghost stays live
+        lastAttemptedVisionPose = visionPose;
+
         // =========================
         // LATENCY ALIGNMENT
         // =========================
@@ -207,8 +226,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         // =========================
         if (error > SNAP_ERROR) {
             resetPose(visionPose);
-            // FIX: update lastVisionPose only here, after all checks pass
-            lastVisionPose = visionPose;
+            lastAcceptedVisionPose = visionPose;
             return;
         }
 
@@ -225,7 +243,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         // LOG + FUSE
         // FIX: lastVisionPose updated here, after all checks pass
         // =========================
-        lastVisionPose = visionPose;
+        lastAcceptedVisionPose = visionPose;
 
         visionLog.append(new double[]{
             visionPose.getX(),
@@ -238,6 +256,37 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Utils.fpgaToCurrentTime(timestampSeconds),
             scaledStd
         );
+    }
+
+    // =========================
+    // HIGH-CONFIDENCE SNAP
+    // Called when vision is trusted enough to override odometry entirely
+    // (e.g. 2+ tags, low ambiguity). Still guards against spinning / wild jumps.
+    // =========================
+    public void snapToVision(Pose2d visionPose, double timestampSeconds) {
+
+        lastAttemptedVisionPose = visionPose;
+
+        double omega = Math.abs(getState().Speeds.omegaRadiansPerSecond);
+        if (omega > MAX_ANGULAR_RATE) return;
+
+        Optional<Pose2d> odomAtTime = samplePoseAt(timestampSeconds);
+        if (odomAtTime.isEmpty()) return;
+
+        double error = visionPose.getTranslation()
+            .getDistance(odomAtTime.get().getTranslation());
+
+        // Still reject completely insane jumps (camera glitch / wrong tag)
+        if (error > MAX_VISION_ERROR) return;
+
+        resetPose(visionPose);
+        lastAcceptedVisionPose = visionPose;
+
+        visionLog.append(new double[]{
+            visionPose.getX(),
+            visionPose.getY(),
+            visionPose.getRotation().getRadians()
+        });
     }
 
     @Override
