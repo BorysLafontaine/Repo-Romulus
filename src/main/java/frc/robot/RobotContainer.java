@@ -3,9 +3,12 @@ package frc.robot;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
-import edu.wpi.first.math.VecBuilder;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+
 import edu.wpi.first.math.filter.SlewRateLimiter;
-import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -47,6 +50,7 @@ public class RobotContainer {
 
     private final SS_Shooter       mShooter      = new SS_Shooter();
     private final SS_TurretFixed   mTurretFixed  = new SS_TurretFixed();
+    private final SS_TurretAim     mTurretAim    = new SS_TurretAim();
     private final SS_Intake        mIntake       = new SS_Intake();
     private final SS_IntakeMotors  mIntakeMotors = new SS_IntakeMotors();
     private final SS_Transfer      mTransfer     = new SS_Transfer();
@@ -61,6 +65,10 @@ public class RobotContainer {
 
     private final TurretGoToTarget_CMD mTurretGoToTarget_CMD =
         new TurretGoToTarget_CMD(mTurretFixed);
+
+    // Hub aiming — robot pose is sourced live from drivetrain odometry
+    private final TurretAimAtHub_CMD mTurretAimAtHub_CMD =
+        new TurretAimAtHub_CMD(mTurretAim, () -> drivetrain.getState().Pose);
 
     private final toggle_intake_CMD mtoggle_intake_CMD =
         new toggle_intake_CMD(mIntake);
@@ -87,6 +95,11 @@ public class RobotContainer {
         new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer);
 
     // =========================
+    // AUTO CHOOSER
+    // =========================
+    private final SendableChooser<Command> autoChooser;
+
+    // =========================
     // CONTROLLER
     // =========================
     private final CommandXboxController joystick =
@@ -108,7 +121,49 @@ public class RobotContainer {
     // CONSTRUCTOR
     // =========================
     public RobotContainer() {
+        registerNamedCommands();
         configureBindings();
+
+        // Build chooser AFTER configureAutoBuilder() has been called
+        // (which happens inside the drivetrain constructor)
+        autoChooser = AutoBuilder.buildAutoChooser();
+        SmartDashboard.putData("Auto Chooser", autoChooser);
+    }
+
+    // =========================
+    // NAMED COMMANDS
+    // These string keys must exactly match what you use in PathPlanner's GUI.
+    // =========================
+    private void registerNamedCommands() {
+
+        // Shooter
+        NamedCommands.registerCommand("ShooterSpin",      new ShooterSpin_CMD(mShooter));
+        NamedCommands.registerCommand("CloseShooterSpin", new CloseShooterSpin_CMD(mShooter));
+        NamedCommands.registerCommand("FarShooterSpin",   new FarShooterSpin_CMD(mShooter));
+
+        // Intake
+        NamedCommands.registerCommand("ToggleIntake",     new toggle_intake_CMD(mIntake));
+        NamedCommands.registerCommand("IntakeSpin",       new IntakeSpin_CMD(mIntakeMotors));
+        NamedCommands.registerCommand("ReverseIntake",    new ReverseIntakeSpin_CMD(mIntakeMotors));
+
+        // Transfer
+        NamedCommands.registerCommand("Transfer",         new Transfer_CMD(mTransfer));
+        NamedCommands.registerCommand("ReverseTransfer",  new ReverseTransfer_CMD(mTransfer));
+
+        // Rollers
+        NamedCommands.registerCommand("RollerSpin",       new RollerSpin_CMD(mRollers));
+        NamedCommands.registerCommand("ReverseRoller",    new ReverseRollerSpin_CMD(mRollers));
+
+        // Groups
+        NamedCommands.registerCommand("Collect",
+            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer));
+
+        // Turret
+        NamedCommands.registerCommand("TurretTarget",
+            new TurretGoToTarget_CMD(mTurretFixed));
+
+        NamedCommands.registerCommand("TurretAimHub",
+            new TurretAimAtHub_CMD(mTurretAim, () -> drivetrain.getState().Pose));
     }
 
     // =========================
@@ -119,8 +174,8 @@ public class RobotContainer {
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> {
 
-                double vx    = xLimiter.calculate(-joystick.getLeftY())  * MaxSpeed;
-                double vy    = yLimiter.calculate(-joystick.getLeftX())  * MaxSpeed;
+                double vx    = xLimiter.calculate(-joystick.getLeftY())      * MaxSpeed;
+                double vy    = yLimiter.calculate(-joystick.getLeftX())      * MaxSpeed;
                 double omega = omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate;
 
                 Logger.recordOutput("Drive/Vx",    vx);
@@ -135,28 +190,21 @@ public class RobotContainer {
 
         // =========================
         // VISION FUSION LOOP
-        // FIX: was calling the 2-arg addVisionMeasurement, which bypasses
-        //      the custom override in CommandSwerveDrivetrain entirely.
-        //      Now passes std devs explicitly to hit the 3-arg override.
+        // getAllEstimates() returns one entry per camera that passed all filters.
+        // addVisionMeasurements() fuses each independently with per-estimate std devs
+        // and applies predictive occlusion scaling.
         // =========================
         drivetrain.registerTelemetry(state -> {
 
-            var est = vision.getLatestEstimate();
+            var estimates = vision.getAllEstimates();
 
-            if (est.isPresent()) {
+            drivetrain.addVisionMeasurements(estimates);
 
-                var    pose      = est.get().estimatedPose.toPose2d();
-                double timestamp = est.get().timestampSeconds;
-
-                // Base trust: tight XY, ignore heading from vision
-                drivetrain.addVisionMeasurement(
-                    pose,
-                    timestamp,
-                    VecBuilder.fill(0.5, 0.5, 9999)
-                );
-
-                Logger.recordOutput("Vision/Pose", pose);
-            }
+            estimates.forEach(e -> {
+                Logger.recordOutput("Vision/Pose",     e.pose());
+                Logger.recordOutput("Vision/TagCount", e.tagCount());
+                Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
+            });
         });
 
         // =========================
@@ -175,7 +223,17 @@ public class RobotContainer {
         joystick.povDown().toggleOnTrue(mCloseShooterSpin_CMD);
         joystick.povUp().toggleOnTrue(mFarShooterSpin_CMD);
 
+        // Turret always aims at hub — set as default command so it runs
+        // automatically without any button press, all match long.
+        mTurretAim.setDefaultCommand(mTurretAimAtHub_CMD);
+
         joystick.povRight().toggleOnTrue(mTurretGoToTarget_CMD);
+
+        // POV right = failsafe: hold to drive turret to 0° (forward).
+        // Interrupts the default aim command while held; aim resumes on release.
+        joystick.povRight().whileTrue(
+            Commands.run(() -> mTurretAim.setAngleDegrees(0.0), mTurretAim)
+        );
 
         joystick.y().onTrue(mtoggle_intake_CMD);
 
@@ -200,32 +258,6 @@ public class RobotContainer {
     // AUTON
     // =========================
     public Command getAutonomousCommand() {
-
-        final var idle = new SwerveRequest.Idle();
-        final Rotation2d[] targetHeading = new Rotation2d[1];
-
-        return Commands.sequence(
-
-            drivetrain.runOnce(() ->
-                drivetrain.seedFieldCentric(Rotation2d.kZero)
-            ),
-
-            Commands.runOnce(() ->
-                targetHeading[0] = drivetrain.getState().Pose.getRotation()
-            ),
-
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(1.0)
-                     .withVelocityY(0.0)
-                     .withRotationalRate(0.0)
-            ).withTimeout(2.0),
-
-            drivetrain.applyRequest(() -> idle).withTimeout(0.05),
-
-            Commands.waitSeconds(0.5),
-
-            mLeftBumperGroup
-        )
-        .deadlineWith(mCloseShooterSpin_CMD);
+        return autoChooser.getSelected();
     }
 }

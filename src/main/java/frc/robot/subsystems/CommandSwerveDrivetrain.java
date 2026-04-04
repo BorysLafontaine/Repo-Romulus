@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -19,21 +20,45 @@ import edu.wpi.first.math.numbers.*;
 
 import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.*;
 
 import edu.wpi.first.util.datalog.*;
 import edu.wpi.first.wpilibj.DataLogManager;
 
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
+import frc.robot.subsystems.VisionSubsystem.VisionEstimate;
 
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
 
     // =========================
-    // CONSTANTS (TUNE THESE)
+    // CONSTANTS
     // =========================
-    private static final double MAX_VISION_ERROR = 1.5;  // meters — reject above this
-    private static final double SNAP_ERROR       = 0.8;  // meters — hard relocalize above this
-    private static final double MAX_ANGULAR_RATE = 2.0;  // rad/s  — reject vision while spinning fast
+
+    // Hard rejection: vision pose too far from odometry prediction
+    private static final double MAX_VISION_ERROR  = 1.5;  // meters
+
+    // Angular rate above which vision is unreliable (camera motion blur)
+    private static final double MAX_ANGULAR_RATE  = 2.0;  // rad/s
+
+    // Std dev base values — scaled dynamically per estimate
+    // XY trust = BASE_XY_STD * avgDist / tagCount * (1 + ambiguityScale * avgAmbiguity)
+    private static final double BASE_XY_STD       = 0.04;
+    private static final double AMBIGUITY_SCALE   = 4.0;
+    private static final double DIST_SCALE        = 0.3;  // extra penalty per meter
+
+    // Heading is never trusted from vision alone
+    private static final double HEADING_STD       = 9999.0;
+
+    // =========================
+    // PREDICTIVE LOCALIZATION CONSTANTS
+    // When tags are lost, odometry drifts. When they reappear, we scale up
+    // std devs proportionally to how long we were blind, so the Kalman filter
+    // is skeptical of measurements that land far from the dead-reckoned prediction.
+    // =========================
+    private static final double OCCLUSION_DECAY   = 0.4;  // std dev multiplier per second blind
+    private static final double MAX_OCCLUSION_MUL = 4.0;  // cap on occlusion penalty
 
     // =========================
     private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
@@ -44,22 +69,29 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         new SwerveRequest.ApplyRobotSpeeds();
 
     // =========================
-    // LOGGING (AdvantageScope)
+    // LOGGING
     // =========================
     private final DataLog log = DataLogManager.getLog();
 
-    private final DoubleArrayLogEntry odomLog =
-        new DoubleArrayLogEntry(log, "/Swerve/OdomPose");
+    private final DoubleArrayLogEntry odomLog   = new DoubleArrayLogEntry(log, "/Swerve/OdomPose");
+    private final DoubleArrayLogEntry visionLog = new DoubleArrayLogEntry(log, "/Swerve/VisionPose");
+    private final DoubleLogEntry      errorLog  = new DoubleLogEntry(log, "/Swerve/VisionError");
 
-    private final DoubleArrayLogEntry visionLog =
-        new DoubleArrayLogEntry(log, "/Swerve/VisionPose");
+    // Last pose that was actually fused (post all checks)
+    private volatile Pose2d lastAcceptedVisionPose  = new Pose2d();
+    // Last pose attempted (used for Field2d ghost — always live)
+    private volatile Pose2d lastAttemptedVisionPose = new Pose2d();
 
-    private final DoubleLogEntry errorLog =
-        new DoubleLogEntry(log, "/Swerve/VisionError");
+    // =========================
+    // PREDICTIVE LOCALIZATION STATE
+    // =========================
+    private double lastTagTimestampSeconds = 0;
+    private boolean hadTagsLastCycle       = false;
 
-    // FIX: was updated before rejection checks, so rejected poses corrupted the
-    //      error log. Now only updated after a measurement is actually fused.
-    private Pose2d lastVisionPose = new Pose2d();
+    // =========================
+    // FIELD2D (Elastic Dashboard)
+    // =========================
+    private final Field2d field = new Field2d();
 
     // =========================
     // CONSTRUCTORS
@@ -70,6 +102,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     ) {
         super(drivetrainConstants, modules);
         DataLogManager.start();
+        SmartDashboard.putData("Field", field);
+        configureAutoBuilder();
     }
 
     public CommandSwerveDrivetrain(
@@ -79,6 +113,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     ) {
         super(drivetrainConstants, odometryUpdateFrequency, modules);
         DataLogManager.start();
+        SmartDashboard.putData("Field", field);
+        configureAutoBuilder();
     }
 
     public CommandSwerveDrivetrain(
@@ -90,10 +126,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     ) {
         super(drivetrainConstants, odometryUpdateFrequency, odomStd, visionStd, modules);
         DataLogManager.start();
+        SmartDashboard.putData("Field", field);
+        configureAutoBuilder();
     }
 
     // =========================
-    // AUTO BUILDER (NON-PRO)
+    // AUTO BUILDER
     // =========================
     public void configureAutoBuilder() {
 
@@ -109,18 +147,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             () -> getState().Pose,
             this::resetPose,
             () -> getState().Speeds,
-
             (speeds, ff) -> setControl(
-                driveRequest.withSpeeds(
-                    ChassisSpeeds.discretize(speeds, 0.02)
-                )
+                driveRequest.withSpeeds(ChassisSpeeds.discretize(speeds, 0.02))
             ),
-
             new PPHolonomicDriveController(
                 new PIDConstants(12, 0, 0),
                 new PIDConstants(8, 0, 0)
             ),
-
             config,
             () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
             this
@@ -161,89 +194,111 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         Pose2d pose = getState().Pose;
 
+        field.setRobotPose(pose);
+        field.getObject("VisionPose").setPose(lastAttemptedVisionPose);
+        field.getObject("VisionAccepted").setPose(lastAcceptedVisionPose);
+
         odomLog.append(new double[]{
-            pose.getX(),
-            pose.getY(),
-            pose.getRotation().getRadians()
+            pose.getX(), pose.getY(), pose.getRotation().getRadians()
         });
 
-        // Error is against the last *accepted* vision pose (post-fix)
         double error = pose.getTranslation()
-            .getDistance(lastVisionPose.getTranslation());
+            .getDistance(lastAcceptedVisionPose.getTranslation());
 
         errorLog.append(error);
     }
 
     // =========================
-    // VISION FUSION
+    // MULTI-ESTIMATE FUSION
+    // Called from RobotContainer with all camera estimates each cycle.
+    // Each estimate is fused independently with its own std devs.
     // =========================
-    @Override
-    public void addVisionMeasurement(
-        Pose2d visionPose,
-        double timestampSeconds,
-        Matrix<N3, N1> stdDevs
-    ) {
-        // =========================
-        // LATENCY ALIGNMENT
-        // =========================
-        Optional<Pose2d> odomAtTime = samplePoseAt(timestampSeconds);
-        if (odomAtTime.isEmpty()) return;
+    public void addVisionMeasurements(List<VisionEstimate> estimates) {
 
-        Pose2d odomPose = odomAtTime.get();
+        boolean hasTagsThisCycle = !estimates.isEmpty();
 
-        // =========================
-        // REJECTION (GATING)
-        // =========================
-        double error = visionPose.getTranslation()
-            .getDistance(odomPose.getTranslation());
+        // Track occlusion duration for predictive trust scaling
+        double now = Utils.fpgaToCurrentTime(Timer.getFPGATimestamp());
+        if (hasTagsThisCycle) {
+            lastTagTimestampSeconds = now;
+        }
+        hadTagsLastCycle = hasTagsThisCycle;
 
-        if (error > MAX_VISION_ERROR) return;
+        double occlusionSeconds = now - lastTagTimestampSeconds;
 
+        for (VisionEstimate est : estimates) {
+            fuseEstimate(est, occlusionSeconds);
+        }
+
+        SmartDashboard.putBoolean("Vision/TagsVisible", hasTagsThisCycle);
+        SmartDashboard.putNumber("Vision/OcclusionSeconds", occlusionSeconds);
+    }
+
+    // =========================
+    // FUSE ONE ESTIMATE
+    // =========================
+    private void fuseEstimate(VisionEstimate est, double occlusionSeconds) {
+
+        lastAttemptedVisionPose = est.pose();
+
+        // --- Angular rate gate ---
         double omega = Math.abs(getState().Speeds.omegaRadiansPerSecond);
         if (omega > MAX_ANGULAR_RATE) return;
 
-        // =========================
-        // HARD RELOCALIZATION
-        // =========================
-        if (error > SNAP_ERROR) {
-            resetPose(visionPose);
-            // FIX: update lastVisionPose only here, after all checks pass
-            lastVisionPose = visionPose;
-            return;
-        }
+        // --- Sample odometry at measurement timestamp for latency compensation ---
+        Optional<Pose2d> odomAtTime = samplePoseAt(est.timestampSeconds());
+        if (odomAtTime.isEmpty()) return;
+
+        double positionError = est.pose().getTranslation()
+            .getDistance(odomAtTime.get().getTranslation());
+
+        // --- Hard rejection ---
+        if (positionError > MAX_VISION_ERROR) return;
 
         // =========================
-        // DYNAMIC TRUST SCALING
+        // DYNAMIC STD DEVS
+        // Tighter trust when: more tags, closer distance, lower ambiguity.
+        // Looser trust when: long occlusion (dead-reckoning drift unknown).
         // =========================
-        double scaledXY    = stdDevs.get(0, 0) + error * 0.5;
-        double scaledTheta = stdDevs.get(2, 0) + error * 0.3;
+        double xyStd = (BASE_XY_STD + est.avgDistanceMeters() * DIST_SCALE)
+                     / est.tagCount()
+                     * (1.0 + AMBIGUITY_SCALE * est.avgAmbiguity());
 
-        Matrix<N3, N1> scaledStd =
-            VecBuilder.fill(scaledXY, scaledXY, scaledTheta);
+        // Occlusion penalty: the longer we were blind, the less we trust
+        // the first few measurements back — odometry may have drifted significantly
+        double occlusionMultiplier = 1.0 + Math.min(
+            occlusionSeconds * OCCLUSION_DECAY,
+            MAX_OCCLUSION_MUL
+        );
+        xyStd *= occlusionMultiplier;
 
-        // =========================
-        // LOG + FUSE
-        // FIX: lastVisionPose updated here, after all checks pass
-        // =========================
-        lastVisionPose = visionPose;
+        Matrix<N3, N1> stdDevs = VecBuilder.fill(xyStd, xyStd, HEADING_STD);
+
+        // --- Log ---
+        lastAcceptedVisionPose = est.pose();
 
         visionLog.append(new double[]{
-            visionPose.getX(),
-            visionPose.getY(),
-            visionPose.getRotation().getRadians()
+            est.pose().getX(),
+            est.pose().getY(),
+            est.pose().getRotation().getRadians()
         });
 
+        SmartDashboard.putNumber("Vision/XYStd",        xyStd);
+        SmartDashboard.putNumber("Vision/OcclusionMul", occlusionMultiplier);
+
+        // --- Fuse into Kalman filter ---
         super.addVisionMeasurement(
-            visionPose,
-            Utils.fpgaToCurrentTime(timestampSeconds),
-            scaledStd
+            est.pose(),
+            Utils.fpgaToCurrentTime(est.timestampSeconds()),
+            stdDevs
         );
     }
 
+    // =========================
+    // OVERRIDES
+    // =========================
     @Override
     public Optional<Pose2d> samplePoseAt(double timestampSeconds) {
         return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
     }
-
-    // FIX: removed resetPose() override — it was a pure no-op (just called super).
 }
