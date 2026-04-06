@@ -59,9 +59,7 @@ public class RobotContainer {
     // =========================
     // COMMANDS
     // =========================
-    private final ShooterSpin_CMD        mShooterSpin_CMD      = new ShooterSpin_CMD(mShooter);
-    private final CloseShooterSpin_CMD   mCloseShooterSpin_CMD = new CloseShooterSpin_CMD(mShooter);
-    private final FarShooterSpin_CMD     mFarShooterSpin_CMD   = new FarShooterSpin_CMD(mShooter);
+    private final ShooterSpin_CMD mShooterSpin_CMD = new ShooterSpin_CMD(mShooter, drivetrain);
 
     private final TurretGoToTarget_CMD mTurretGoToTarget_CMD =
         new TurretGoToTarget_CMD(mTurretFixed);
@@ -137,9 +135,9 @@ public class RobotContainer {
     private void registerNamedCommands() {
 
         // Shooter
-        NamedCommands.registerCommand("ShooterSpin",      new ShooterSpin_CMD(mShooter));
-        NamedCommands.registerCommand("CloseShooterSpin", new CloseShooterSpin_CMD(mShooter));
-        NamedCommands.registerCommand("FarShooterSpin",   new FarShooterSpin_CMD(mShooter));
+        NamedCommands.registerCommand("ShooterSpin",      new ShooterSpin_CMD(mShooter, drivetrain));
+        NamedCommands.registerCommand("CloseShooterSpin", new ShooterSpin_CMD(mShooter, drivetrain));
+        NamedCommands.registerCommand("FarShooterSpin",   new ShooterSpin_CMD(mShooter, drivetrain));
 
         // Intake
         NamedCommands.registerCommand("ToggleIntake",     new toggle_intake_CMD(mIntake));
@@ -234,8 +232,6 @@ public class RobotContainer {
         // BUTTONS
         // =========================
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
-        joystick.povDown().toggleOnTrue(mCloseShooterSpin_CMD);
-        joystick.povUp().toggleOnTrue(mFarShooterSpin_CMD);
 
         // Turret always aims at hub — set as default command so it runs
         // automatically without any button press, all match long.

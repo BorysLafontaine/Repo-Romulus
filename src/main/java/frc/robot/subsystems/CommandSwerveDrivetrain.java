@@ -193,8 +193,16 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
             double dist = Math.max(est.avgDistanceMeters(), 0.1);
 
-            // XY trust: 0.05m stddev at 1m, 0.5m at ~3m, 2.0m at 6m (quadratic growth)
-            double xyStdDev  = 0.05 * dist * dist;
+            // Multi-tag PNP is geometrically unambiguous → trust it significantly more.
+            // Single-tag: quadratic growth with distance (perspective error).
+            // Capped at 2.0m — beyond that, don't let a noisy single-tag corrupt odometry.
+            double xyStdDev;
+            if (est.tagCount() >= 2) {
+                xyStdDev = 0.01 * dist * dist; // tight: 0.04m at 2m, 0.09m at 3m
+            } else {
+                xyStdDev = 0.05 * dist * dist; // loose: 0.20m at 2m, 0.45m at 3m
+            }
+            xyStdDev = Math.min(xyStdDev, 2.0);
 
             // Never correct heading from vision — trust IMU/gyro instead
             double rotStdDev = 9999.0;

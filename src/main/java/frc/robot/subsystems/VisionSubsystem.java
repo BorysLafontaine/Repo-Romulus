@@ -119,9 +119,21 @@ public class VisionSubsystem extends SubsystemBase {
 
     // =========================
     // BEST ESTIMATE (Start-button hard reset)
+    // Multi-tag PNP is unambiguous → strongly prefer it for hard resets.
+    // Fall back to lowest-ambiguity single-tag only if no multi-tag available.
     // =========================
     public Optional<VisionEstimate> getHighConfidenceEstimate() {
-        return getAllEstimates().stream()
+        List<VisionEstimate> estimates = getAllEstimates();
+
+        // First preference: multi-tag estimate with best (lowest) ambiguity
+        Optional<VisionEstimate> multiTag = estimates.stream()
+            .filter(e -> e.tagCount() >= 2)
+            .min(Comparator.comparingDouble(VisionEstimate::avgAmbiguity));
+        if (multiTag.isPresent()) return multiTag;
+
+        // Fallback: single-tag only if ambiguity is clearly trustworthy
+        return estimates.stream()
+            .filter(e -> e.avgAmbiguity() < 0.15)
             .min(Comparator.comparingDouble(VisionEstimate::avgAmbiguity));
     }
 
@@ -163,11 +175,18 @@ public class VisionSubsystem extends SubsystemBase {
             .mapToDouble(PhotonTrackedTarget::getPoseAmbiguity)
             .average().orElse(999.0);
 
-        // Single-tag poses have two mirror solutions; reject if ambiguity is too high
-        // to distinguish them. Multi-tag PNP is unambiguous so skip this check.
-        if (targets.size() == 1 && avgAmb > MAX_SINGLE_TAG_AMBIGUITY) {
-            Logger.recordOutput("Vision/" + name + "/Rejected", "high ambiguity " + avgAmb);
-            return Optional.empty();
+        // Single-tag has two mirror pose solutions.
+        // Reject if: (a) ambiguity too high to tell solutions apart,
+        //            (b) tag is far — perspective error grows with distance.
+        if (targets.size() == 1) {
+            if (avgAmb > MAX_SINGLE_TAG_AMBIGUITY) {
+                Logger.recordOutput("Vision/" + name + "/Rejected", "high ambiguity " + avgAmb);
+                return Optional.empty();
+            }
+            if (avgDist > 4.0) {
+                Logger.recordOutput("Vision/" + name + "/Rejected", "single-tag too far " + avgDist);
+                return Optional.empty();
+            }
         }
 
         Logger.recordOutput("Vision/" + name + "/Pose",     pose);
