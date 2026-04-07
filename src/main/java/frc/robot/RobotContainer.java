@@ -188,24 +188,28 @@ public class RobotContainer {
         // addVisionMeasurements() hard-resets pose every cycle when tags are visible.
         // Falls back to pure odometry when no tags are seen.
         // =========================
-        drivetrain.registerTelemetry(state -> {
+        // Telemetry runs in CTRE's 250 Hz odometry thread — only snapshot here,
+        // never call resetPose from this thread (mutex deadlock risk).
+        drivetrain.registerTelemetry(state -> drivetrain.snapshotOdometryPose(state.Pose));
 
-            // Snapshot pure wheel odometry BEFORE vision resets the pose
-            drivetrain.snapshotOdometryPose(state.Pose);
+        // Vision reset loop — runs in the main 50 Hz robot loop (safe to call resetPose here).
+        // Uses odometry at all times; when a tag is visible the pose snaps to the camera estimate.
+        // No subsystem requirements so it never conflicts with drive or turret commands.
+        new Trigger(() -> true).whileTrue(
+            Commands.run(() -> {
+                Pose2d currentPose = drivetrain.getState().Pose;
+                vision.setReferencePose(currentPose);
 
-            // Keep estimators aligned to current odometry so single-tag picks the right solution
-            vision.setReferencePose(state.Pose);
+                var estimates = vision.getAllEstimates();
+                drivetrain.addVisionMeasurements(estimates);
 
-            var estimates = vision.getAllEstimates();
-
-            drivetrain.addVisionMeasurements(estimates);
-
-            estimates.forEach(e -> {
-                Logger.recordOutput("Vision/Pose",     e.pose());
-                Logger.recordOutput("Vision/TagCount", e.tagCount());
-                Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
-            });
-        });
+                estimates.forEach(e -> {
+                    Logger.recordOutput("Vision/Pose",     e.pose());
+                    Logger.recordOutput("Vision/TagCount", e.tagCount());
+                    Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
+                });
+            })
+        );
 
         // =========================
         // DISABLED MODE
@@ -222,6 +226,9 @@ public class RobotContainer {
         // high-confidence multi-tag estimate is available.  This corrects
         // any odometry drift that built up during auto or while disabled.
         // =========================
+        // Teleop enable: attempt immediate pose snap from vision.
+        // If no tags are visible yet, the vision loop above will snap it on the
+        // first cycle where a tag is seen (no separate retry needed).
         RobotModeTriggers.teleop().onTrue(Commands.runOnce(() ->
             vision.getHighConfidenceEstimate()
                   .ifPresent(drivetrain::hardResetPoseFromVision)
