@@ -40,13 +40,14 @@ public class VisionSubsystem extends SubsystemBase {
 
     // =========================
     // ROBOT-TO-CAMERA TRANSFORMS
-    // Back-left  (LeftCam):  X=-0.321m, Y=+0.321m, Z=0.42m, yaw=315°, pitch=-15°
-    // Back-right (RightCam): X=-0.321m, Y=-0.321m, Z=0.42m, yaw=225°, pitch=-15°
-    // ⚠️ Positive yaw = CCW when viewed from above (WPILib convention).
+    // Cameras are mounted at the back of the robot, angled 45° outward.
+    // WPILib yaw convention: 0°=forward, 90°=left, 180°=back, 270°=right (CCW positive).
+    // 45° left of backward  = 135° → LeftCam
+    // 45° right of backward = 225° → RightCam
     // =========================
     private final Transform3d robotToBackLeftCam = new Transform3d(
         new Translation3d(-0.321, 0.321, 0.42),
-        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(315))
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(135))
     );
 
     private final Transform3d robotToBackRightCam = new Transform3d(

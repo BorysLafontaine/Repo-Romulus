@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -53,6 +54,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final DoubleArrayLogEntry visionLog = new DoubleArrayLogEntry(log, "/Swerve/VisionPose");
 
     private Pose2d lastVisionPose = new Pose2d();
+
+    // Odometry pose captured before vision resets — pure wheel odometry, no camera influence
+    private Pose2d odomOnlyPose = new Pose2d();
 
     // =========================
     // FIELD2D (Elastic Dashboard)
@@ -174,69 +178,69 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     // =========================
-    // VISION MEASUREMENT FUSION
+    // VISION POSE OVERRIDE
     //
-    // Uses the drivetrain's built-in Kalman filter (addVisionMeasurement).
-    // XY standard deviation scales with distance² — farther tags trusted less.
-    // Rotation is never trusted from vision (huge stddev) — gyro handles heading.
+    // Every cycle, pick the best available estimate and hard-reset XY from it.
+    // Gyro heading is always preserved — vision heading is ignored.
     //
-    // This is called from the telemetry callback (odometry thread), so it runs
-    // at the odometry frequency (250 Hz on CAN FD) — vision frames are typically
-    // 20–50 Hz so most calls are no-ops (estimator returns empty Optional).
+    // Priority: multi-tag (lowest ambiguity) > single-tag (lowest ambiguity).
+    // Falls back to pure odometry when no estimates pass the filter.
     // =========================
     public void addVisionMeasurements(List<VisionEstimate> estimates) {
 
         boolean hasTags = !estimates.isEmpty();
         SmartDashboard.putBoolean("Vision/TagsVisible", hasTags);
 
-        for (VisionEstimate est : estimates) {
+        if (estimates.isEmpty()) return;
 
-            double dist = Math.max(est.avgDistanceMeters(), 0.1);
+        // Prefer multi-tag (unambiguous), fall back to best single-tag
+        VisionEstimate best = estimates.stream()
+            .filter(e -> e.tagCount() >= 2)
+            .min(Comparator.comparingDouble(VisionEstimate::avgAmbiguity))
+            .orElseGet(() -> estimates.stream()
+                .min(Comparator.comparingDouble(VisionEstimate::avgAmbiguity))
+                .orElse(null));
 
-            // Multi-tag PNP is geometrically unambiguous → trust it significantly more.
-            // Single-tag: quadratic growth with distance (perspective error).
-            // Capped at 2.0m — beyond that, don't let a noisy single-tag corrupt odometry.
-            double xyStdDev;
-            if (est.tagCount() >= 2) {
-                xyStdDev = 0.01 * dist * dist; // tight: 0.04m at 2m, 0.09m at 3m
-            } else {
-                xyStdDev = 0.05 * dist * dist; // loose: 0.20m at 2m, 0.45m at 3m
-            }
-            xyStdDev = Math.min(xyStdDev, 2.0);
+        if (best == null) return;
 
-            // Never correct heading from vision — trust IMU/gyro instead
-            double rotStdDev = 9999.0;
+        // Hard-reset XY from vision, keep gyro heading
+        Pose2d resetTo = new Pose2d(best.pose().getTranslation(), getState().Pose.getRotation());
+        resetPose(resetTo);
+        lastVisionPose = resetTo;
 
-            addVisionMeasurement(
-                est.pose(),
-                est.timestampSeconds(),
-                VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev)
-            );
+        double dist = best.avgDistanceMeters();
+        visionLog.append(new double[]{resetTo.getX(), resetTo.getY(), resetTo.getRotation().getRadians()});
 
-            lastVisionPose = est.pose();
-
-            visionLog.append(new double[]{
-                est.pose().getX(), est.pose().getY(), est.pose().getRotation().getRadians()
-            });
-
-            SmartDashboard.putNumber("Vision/PoseX",    est.pose().getX());
-            SmartDashboard.putNumber("Vision/PoseY",    est.pose().getY());
-            SmartDashboard.putNumber("Vision/Dist",     dist);
-            SmartDashboard.putNumber("Vision/XYStdDev", xyStdDev);
-        }
+        SmartDashboard.putNumber ("Vision/PoseX",    resetTo.getX());
+        SmartDashboard.putNumber ("Vision/PoseY",    resetTo.getY());
+        SmartDashboard.putNumber ("Vision/Dist",     dist);
+        SmartDashboard.putNumber ("Vision/TagCount", best.tagCount());
+        SmartDashboard.putNumber ("Vision/Ambiguity",best.avgAmbiguity());
     }
 
     // =========================
     // MANUAL HARD RESET (Start button / teleop-enable)
-    // Instantly snaps odometry to vision pose — use when stationary with clear tag view.
+    // Same as the automatic override but callable from a button.
     // =========================
     public boolean hardResetPoseFromVision(VisionEstimate est) {
-        // Keep gyro heading, override only XY from vision
         Pose2d resetTo = new Pose2d(est.pose().getTranslation(), getState().Pose.getRotation());
         resetPose(resetTo);
         lastVisionPose = resetTo;
         SmartDashboard.putBoolean("Vision/ManualResetTriggered", true);
         return true;
+    }
+
+    // =========================
+    // ODOMETRY-ONLY POSE (no camera influence)
+    // Captured before vision resets the pose each cycle.
+    // Use this for distance-based calculations that should not jump with vision.
+    // =========================
+    public void snapshotOdometryPose(Pose2d pose) {
+        odomOnlyPose = pose;
+    }
+
+    public Pose2d getOdometryPose() {
+        return odomOnlyPose;
     }
 
     // =========================

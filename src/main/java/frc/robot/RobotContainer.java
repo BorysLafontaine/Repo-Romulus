@@ -48,9 +48,8 @@ public class RobotContainer {
 
     private final VisionSubsystem vision = new VisionSubsystem();
 
-    private final SS_Shooter       mShooter      = new SS_Shooter();
-    private final SS_TurretFixed   mTurretFixed  = new SS_TurretFixed();
-    private final SS_TurretAim     mTurretAim    = new SS_TurretAim();
+    private final SS_Shooter   mShooter   = new SS_Shooter();
+    private final SS_TurretAim mTurretAim = new SS_TurretAim();
     private final SS_Intake        mIntake       = new SS_Intake();
     private final SS_IntakeMotors  mIntakeMotors = new SS_IntakeMotors();
     private final SS_Transfer      mTransfer     = new SS_Transfer();
@@ -59,10 +58,8 @@ public class RobotContainer {
     // =========================
     // COMMANDS
     // =========================
-    private final ShooterSpin_CMD mShooterSpin_CMD = new ShooterSpin_CMD(mShooter, drivetrain);
-
-    private final TurretGoToTarget_CMD mTurretGoToTarget_CMD =
-        new TurretGoToTarget_CMD(mTurretFixed);
+    private final ShooterSpin_CMD     mShooterSpin_CMD     = new ShooterSpin_CMD(mShooter, drivetrain);
+    private final TurretResetPose_CMD mTurretResetPose_CMD = new TurretResetPose_CMD(mTurretAim);
 
     // Hub aiming — robot pose is sourced live from drivetrain odometry
     private final TurretAimAtHub_CMD mTurretAimAtHub_CMD =
@@ -125,6 +122,8 @@ public class RobotContainer {
         // Build chooser AFTER configureAutoBuilder() has been called
         // (which happens inside the drivetrain constructor)
         autoChooser = AutoBuilder.buildAutoChooser();
+
+        // "Auto Chooser" is the key Elastic's SendableChooser widget looks for
         SmartDashboard.putData("Auto Chooser", autoChooser);
     }
 
@@ -157,9 +156,6 @@ public class RobotContainer {
             new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer));
 
         // Turret
-        NamedCommands.registerCommand("TurretTarget",
-            new TurretGoToTarget_CMD(mTurretFixed));
-
         NamedCommands.registerCommand("TurretAimHub",
             new TurretAimAtHub_CMD(mTurretAim, drivetrain));
     }
@@ -193,6 +189,9 @@ public class RobotContainer {
         // Falls back to pure odometry when no tags are seen.
         // =========================
         drivetrain.registerTelemetry(state -> {
+
+            // Snapshot pure wheel odometry BEFORE vision resets the pose
+            drivetrain.snapshotOdometryPose(state.Pose);
 
             // Keep estimators aligned to current odometry so single-tag picks the right solution
             vision.setReferencePose(state.Pose);
@@ -233,16 +232,16 @@ public class RobotContainer {
         // =========================
         joystick.x().toggleOnTrue(mShooterSpin_CMD);
 
-        // Turret always aims at hub — set as default command so it runs
-        // automatically without any button press, all match long.
-        mTurretAim.setDefaultCommand(mTurretAimAtHub_CMD);
+        // POV left: toggle hub aim on/off
+        // POV right: toggle auto aim — on = aiming, off = motor coasts (disabled)
+        joystick.povRight().toggleOnTrue(mTurretAimAtHub_CMD);
 
-        joystick.povRight().toggleOnTrue(mTurretGoToTarget_CMD);
+        // POV up: zero encoder at current position (interrupts aim if running)
+        joystick.povUp().onTrue(mTurretResetPose_CMD);
 
-        // POV right = failsafe: hold to drive turret to 0° (forward).
-        // Interrupts the default aim command while held; aim resumes on release.
-        joystick.povRight().whileTrue(
-            Commands.run(() -> mTurretAim.setAngleDegrees(0.0), mTurretAim)
+        // POV left: reset field-centric heading
+        joystick.povLeft().onTrue(
+            drivetrain.runOnce(drivetrain::seedFieldCentric)
         );
 
         joystick.y().onTrue(mtoggle_intake_CMD);
@@ -257,9 +256,6 @@ public class RobotContainer {
 
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
 
-        joystick.povLeft().onTrue(
-            drivetrain.runOnce(drivetrain::seedFieldCentric)
-        );
 
         // =========================
         // HARD POSE RESET FROM VISION
