@@ -7,7 +7,6 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.generated.Constants;
-import frc.robot.generated.Constants.*;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_Transfer extends SubsystemBase {
