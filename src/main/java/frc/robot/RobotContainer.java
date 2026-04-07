@@ -7,6 +7,7 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -16,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -28,9 +30,8 @@ public class RobotContainer {
     // =========================
     // INPUT FILTERING
     // =========================
-    private final SlewRateLimiter xLimiter     = new SlewRateLimiter(3);
-    private final SlewRateLimiter yLimiter     = new SlewRateLimiter(3);
-    private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(6);
+    private final SlewRateLimiter xLimiter = new SlewRateLimiter(3);
+    private final SlewRateLimiter yLimiter = new SlewRateLimiter(3);
 
     private final double MaxSpeed =
         TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -74,14 +75,8 @@ public class RobotContainer {
     private final ReverseIntakeSpin_CMD mReverseIntakeSpin_CMD =
         new ReverseIntakeSpin_CMD(mIntakeMotors);
 
-    private final Transfer_CMD mTransfer_CMD =
-        new Transfer_CMD(mTransfer);
-
     private final ReverseTransfer_CMD mReverseTransfer_CMD =
         new ReverseTransfer_CMD(mTransfer);
-
-    private final RollerSpin_CMD mRollerSpin_CMD =
-        new RollerSpin_CMD(mRollers);
 
     private final ReverseRollerSpin_CMD mReverseRollerSpin_CMD =
         new ReverseRollerSpin_CMD(mRollers);
@@ -170,7 +165,7 @@ public class RobotContainer {
 
                 double vx    = xLimiter.calculate(-joystick.getLeftY())      * MaxSpeed;
                 double vy    = yLimiter.calculate(-joystick.getLeftX())      * MaxSpeed;
-                double omega = omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate;
+                double omega = -joystick.getRightX() * MaxAngularRate;
 
                 Logger.recordOutput("Drive/Vx",    vx);
                 Logger.recordOutput("Drive/Vy",    vy);
