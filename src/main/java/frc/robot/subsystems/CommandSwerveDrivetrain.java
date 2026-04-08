@@ -14,7 +14,6 @@ import com.pathplanner.lib.config.*;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.*;
@@ -178,20 +177,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     // =========================
-    // VISION POSE CORRECTION
+    // VISION POSE OVERRIDE
     //
-    // Blends camera estimates into the pose estimator via Kalman filter.
-    // Odometry (wheel encoders + gyro) runs freely at all times — this just
-    // nudges the estimate toward the camera when a tag is visible.
-    // When no tag is visible, the pose continues to update from odometry alone.
+    // Every cycle, pick the best available estimate and hard-reset XY from it.
+    // Gyro heading is always preserved — vision heading is ignored.
     //
-    // Std devs: (x meters, y meters, heading radians). Large heading value means
-    // "don't trust vision heading — trust the gyro instead."
-    // Multi-tag is more accurate → tighter XY std devs.
+    // Priority: multi-tag (lowest ambiguity) > single-tag (lowest ambiguity).
+    // Falls back to pure odometry when no estimates pass the filter.
     // =========================
-    private static final Matrix<N3, N1> MULTI_TAG_STD_DEVS  = VecBuilder.fill(0.1,  0.1,  9999.0);
-    private static final Matrix<N3, N1> SINGLE_TAG_STD_DEVS = VecBuilder.fill(0.5,  0.5,  9999.0);
-
     public void addVisionMeasurements(List<VisionEstimate> estimates) {
 
         boolean hasTags = !estimates.isEmpty();
@@ -209,16 +202,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         if (best == null) return;
 
-        // Kalman blend — odometry keeps running, pose drifts normally when no tag
-        Matrix<N3, N1> stdDevs = best.tagCount() >= 2 ? MULTI_TAG_STD_DEVS : SINGLE_TAG_STD_DEVS;
-        addVisionMeasurement(best.pose(), best.timestampSeconds(), stdDevs);
-        lastVisionPose = best.pose();
+        // Hard-reset XY from vision, keep gyro heading
+        Pose2d resetTo = new Pose2d(best.pose().getTranslation(), getState().Pose.getRotation());
+        resetPose(resetTo);
+        lastVisionPose = resetTo;
 
-        visionLog.append(new double[]{best.pose().getX(), best.pose().getY(), best.pose().getRotation().getRadians()});
+        double dist = best.avgDistanceMeters();
+        visionLog.append(new double[]{resetTo.getX(), resetTo.getY(), resetTo.getRotation().getRadians()});
 
-        SmartDashboard.putNumber ("Vision/PoseX",    best.pose().getX());
-        SmartDashboard.putNumber ("Vision/PoseY",    best.pose().getY());
-        SmartDashboard.putNumber ("Vision/Dist",     best.avgDistanceMeters());
+        SmartDashboard.putNumber ("Vision/PoseX",    resetTo.getX());
+        SmartDashboard.putNumber ("Vision/PoseY",    resetTo.getY());
+        SmartDashboard.putNumber ("Vision/Dist",     dist);
         SmartDashboard.putNumber ("Vision/TagCount", best.tagCount());
         SmartDashboard.putNumber ("Vision/Ambiguity",best.avgAmbiguity());
     }

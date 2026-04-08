@@ -7,7 +7,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -17,7 +16,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -30,8 +28,9 @@ public class RobotContainer {
     // =========================
     // INPUT FILTERING
     // =========================
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(3);
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(3);
+    private final SlewRateLimiter xLimiter     = new SlewRateLimiter(4);
+    private final SlewRateLimiter yLimiter     = new SlewRateLimiter(4);
+    private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(4);
 
     private final double MaxSpeed =
         TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -42,8 +41,6 @@ public class RobotContainer {
     // =========================
     // SUBSYSTEMS
     // =========================
-    private final LEDSubsystem mLedSubsystem = new LEDSubsystem();
-
     public final CommandSwerveDrivetrain drivetrain =
         TunerConstants.createDrivetrain();
 
@@ -165,7 +162,7 @@ public class RobotContainer {
 
                 double vx    = xLimiter.calculate(-joystick.getLeftY())      * MaxSpeed;
                 double vy    = yLimiter.calculate(-joystick.getLeftX())      * MaxSpeed;
-                double omega = -joystick.getRightX() * MaxAngularRate;
+                double omega = omegaLimiter.calculate(-joystick.getRightX()) * MaxAngularRate;
 
                 Logger.recordOutput("Drive/Vx",    vx);
                 Logger.recordOutput("Drive/Vy",    vy);
@@ -183,28 +180,24 @@ public class RobotContainer {
         // addVisionMeasurements() hard-resets pose every cycle when tags are visible.
         // Falls back to pure odometry when no tags are seen.
         // =========================
-        // Telemetry runs in CTRE's 250 Hz odometry thread — only snapshot here,
-        // never call resetPose from this thread (mutex deadlock risk).
-        drivetrain.registerTelemetry(state -> drivetrain.snapshotOdometryPose(state.Pose));
+        drivetrain.registerTelemetry(state -> {
 
-        // Vision reset loop — runs in the main 50 Hz robot loop (safe to call resetPose here).
-        // Uses odometry at all times; when a tag is visible the pose snaps to the camera estimate.
-        // No subsystem requirements so it never conflicts with drive or turret commands.
-        new Trigger(() -> true).whileTrue(
-            Commands.run(() -> {
-                Pose2d currentPose = drivetrain.getState().Pose;
-                vision.setReferencePose(currentPose);
+            // Snapshot pure wheel odometry BEFORE vision resets the pose
+            drivetrain.snapshotOdometryPose(state.Pose);
 
-                var estimates = vision.getAllEstimates();
-                drivetrain.addVisionMeasurements(estimates);
+            // Keep estimators aligned to current odometry so single-tag picks the right solution
+            vision.setReferencePose(state.Pose);
 
-                estimates.forEach(e -> {
-                    Logger.recordOutput("Vision/Pose",     e.pose());
-                    Logger.recordOutput("Vision/TagCount", e.tagCount());
-                    Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
-                });
-            })
-        );
+            var estimates = vision.getAllEstimates();
+
+            drivetrain.addVisionMeasurements(estimates);
+
+            estimates.forEach(e -> {
+                Logger.recordOutput("Vision/Pose",     e.pose());
+                Logger.recordOutput("Vision/TagCount", e.tagCount());
+                Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
+            });
+        });
 
         // =========================
         // DISABLED MODE
@@ -271,7 +264,6 @@ public class RobotContainer {
                   .ifPresent(drivetrain::hardResetPoseFromVision)
         ));
 
-        mLedSubsystem.updateLEDs();
     }
 
     // =========================

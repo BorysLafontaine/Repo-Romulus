@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.generated.Constants;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class SS_IntakeMotors extends SubsystemBase {
@@ -33,7 +34,8 @@ public class SS_IntakeMotors extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
+    SmartDashboard.putBoolean("Intake/RollerSpinning",
+        Math.abs(m_IRollerMotor.getVelocity().getValueAsDouble()) > 0.5);
   }
 
 

@@ -83,6 +83,9 @@ public class SS_TurretAim extends SubsystemBase {
     // Last commanded target — used for deadzone check and end() hold
     private double lastTargetDeg = 0.0;
 
+    // True while an aim command is actively running
+    private boolean aimActive = false;
+
     // =========================
     // CONSTRUCTOR
     // =========================
@@ -135,6 +138,7 @@ public class SS_TurretAim extends SubsystemBase {
         double deadzone = SmartDashboard.getNumber("Turret/Tune/DeadzoneDeg", DEFAULT_DEADZONE_DEG);
 
         lastTargetDeg = clamped;
+        aimActive = true;
 
         if (errorDeg < deadzone) return; // within deadzone — hold current position
 
@@ -164,6 +168,7 @@ public class SS_TurretAim extends SubsystemBase {
     }
 
     public void stop() {
+        aimActive = false;
         motor.stopMotor();
     }
 
@@ -250,5 +255,6 @@ public class SS_TurretAim extends SubsystemBase {
         SmartDashboard.putNumber ("Turret/StatorCurrent", statorA);
         SmartDashboard.putNumber ("Turret/SupplyVoltage", supplyV);
         SmartDashboard.putBoolean("Turret/OnTarget",      onTarget);
+        SmartDashboard.putBoolean("Turret/Active",        aimActive);
     }
 }

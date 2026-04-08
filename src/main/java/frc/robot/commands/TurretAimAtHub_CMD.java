@@ -42,7 +42,7 @@ public class TurretAimAtHub_CMD extends Command {
     @Override
     public void execute() {
 
-        Pose2d robotPose = drivetrain.getState().Pose;
+        Pose2d robotPose = drivetrain.getOdometryPose();
 
         boolean isRed = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
         Translation2d hub = isRed ? RED_HUB : BLUE_HUB;
