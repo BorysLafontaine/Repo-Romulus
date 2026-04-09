@@ -132,6 +132,8 @@ public class RobotContainer {
 
         // Intake
         NamedCommands.registerCommand("ToggleIntake",     new toggle_intake_CMD(mIntake));
+        NamedCommands.registerCommand("DeployIntake",     Commands.runOnce(mIntake::deploy, mIntake));
+        NamedCommands.registerCommand("RetractIntake",    Commands.runOnce(mIntake::retract, mIntake));
         NamedCommands.registerCommand("IntakeSpin",       new IntakeSpin_CMD(mIntakeMotors));
         NamedCommands.registerCommand("ReverseIntake",    new ReverseIntakeSpin_CMD(mIntakeMotors));
 
@@ -150,6 +152,10 @@ public class RobotContainer {
         // Turret
         NamedCommands.registerCommand("TurretAimHub",
             new TurretAimAtHub_CMD(mTurretAim, drivetrain));
+
+        // Aim + shoot in one shot — use this in PathPlanner to aim, spin up, and fire
+        NamedCommands.registerCommand("AimAndShoot",
+            new AutonAimAndShoot_CMD(mTurretAim, mShooter, drivetrain));
     }
 
     // =========================
@@ -198,6 +204,14 @@ public class RobotContainer {
                 Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
             });
         });
+
+        // =========================
+        // AUTON — aim + shooter always running for the full autonomous period
+        // Transfer is NOT included; trigger it separately via a named command.
+        // =========================
+        RobotModeTriggers.autonomous().whileTrue(
+            new AutonAimAndShoot_CMD(mTurretAim, mShooter, drivetrain)
+        );
 
         // =========================
         // DISABLED MODE

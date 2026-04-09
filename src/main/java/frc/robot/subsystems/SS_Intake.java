@@ -22,6 +22,7 @@ public class SS_Intake extends SubsystemBase {
         tab.addBoolean("Pressure Switch", m_compressor::getPressureSwitchValue);
 
         m_compressor.enableDigital();
+        m_doubleSolenoid.set(DoubleSolenoid.Value.kReverse); // start retracted every match
     }
 
     public void deploy() {

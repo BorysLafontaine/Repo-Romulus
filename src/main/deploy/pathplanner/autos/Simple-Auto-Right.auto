@@ -9,6 +9,18 @@
           "data": {
             "pathName": "backward path R"
           }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 0.5
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Collect"
+          }
         }
       ]
     }
