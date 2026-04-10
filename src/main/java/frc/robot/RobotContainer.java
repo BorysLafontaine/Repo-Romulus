@@ -28,8 +28,8 @@ public class RobotContainer {
     // =========================
     // INPUT FILTERING
     // =========================
-    private final SlewRateLimiter xLimiter     = new SlewRateLimiter(4);
-    private final SlewRateLimiter yLimiter     = new SlewRateLimiter(4);
+    private final SlewRateLimiter xLimiter     = new SlewRateLimiter(3);
+    private final SlewRateLimiter yLimiter     = new SlewRateLimiter(3);
     private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(4);
 
     private final double MaxSpeed =
@@ -206,11 +206,22 @@ public class RobotContainer {
         });
 
         // =========================
+        // INTAKE RETRACT ON ENABLE
+        // Solenoids can't fire while disabled, so retract here when the robot enables.
+        // =========================
+        RobotModeTriggers.autonomous().onTrue(Commands.runOnce(mIntake::retract, mIntake));
+        RobotModeTriggers.teleop().onTrue(Commands.runOnce(mIntake::retract, mIntake));
+
+        // =========================
         // AUTON — aim + shooter always running for the full autonomous period
         // Transfer is NOT included; trigger it separately via a named command.
         // =========================
         RobotModeTriggers.autonomous().whileTrue(
             new AutonAimAndShoot_CMD(mTurretAim, mShooter, drivetrain)
+        );
+
+        RobotModeTriggers.autonomous().whileTrue(
+            new IntakeSpin_CMD(mIntakeMotors)
         );
 
         // =========================

@@ -17,35 +17,15 @@
           }
         },
         {
-          "type": "deadline",
+          "type": "path",
           "data": {
-            "commands": [
-              {
-                "type": "sequential",
-                "data": {
-                  "commands": [
-                    {
-                      "type": "path",
-                      "data": {
-                        "pathName": "Manger-Beaucoup1"
-                      }
-                    },
-                    {
-                      "type": "path",
-                      "data": {
-                        "pathName": "Manger-Beaucoup2"
-                      }
-                    }
-                  ]
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "IntakeSpin"
-                }
-              }
-            ]
+            "pathName": "Manger-Beaucoup1"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Manger-Beaucoup2"
           }
         },
         {

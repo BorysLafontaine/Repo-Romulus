@@ -23,7 +23,7 @@ public class AutonAimAndShoot_CMD extends Command {
     private static final Translation2d BLUE_HUB = new Translation2d(4.626, 4.035);
     private static final Translation2d RED_HUB  = new Translation2d(11.915, 4.035);
 
-    private static final double TURRET_ENCODER_OFFSET_DEG = -90.0;
+    private static final double TURRET_ENCODER_OFFSET_DEG = -90.0 + 180.0;
 
     private final SS_TurretAim            turret;
     private final SS_Shooter              shooter;

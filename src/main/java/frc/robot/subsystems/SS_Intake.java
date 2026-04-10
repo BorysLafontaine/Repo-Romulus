@@ -22,22 +22,22 @@ public class SS_Intake extends SubsystemBase {
         tab.addBoolean("Pressure Switch", m_compressor::getPressureSwitchValue);
 
         m_compressor.enableDigital();
-        m_doubleSolenoid.set(DoubleSolenoid.Value.kReverse); // start retracted every match
+        m_doubleSolenoid.set(DoubleSolenoid.Value.kForward); // start retracted every match
     }
 
     public void deploy() {
-        m_doubleSolenoid.set(DoubleSolenoid.Value.kForward);
+        m_doubleSolenoid.set(DoubleSolenoid.Value.kReverse);
     }
 
     public void retract() {
-        m_doubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+        m_doubleSolenoid.set(DoubleSolenoid.Value.kForward);
     }
 
     public void toggleDeploy() {
         if (m_doubleSolenoid.get() == DoubleSolenoid.Value.kForward) {
-            retract();
-        } else {
             deploy();
+        } else {
+            retract();
         }
     }
 
