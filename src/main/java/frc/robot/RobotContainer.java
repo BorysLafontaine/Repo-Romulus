@@ -14,7 +14,7 @@ import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
 import org.littletonrobotics.junction.Logger;
@@ -89,8 +89,8 @@ public class RobotContainer {
     // =========================
     // CONTROLLER
     // =========================
-    private final CommandXboxController joystick =
-        new CommandXboxController(0);
+    private final CommandPS5Controller joystick =
+        new CommandPS5Controller(0);
 
     // =========================
     // DRIVE REQUESTS
@@ -131,23 +131,16 @@ public class RobotContainer {
         NamedCommands.registerCommand("FarShooterSpin",   new ShooterSpin_CMD(mShooter, drivetrain));
 
         // Intake
-        NamedCommands.registerCommand("ToggleIntake",     new toggle_intake_CMD(mIntake));
         NamedCommands.registerCommand("DeployIntake",     Commands.runOnce(mIntake::deploy, mIntake));
         NamedCommands.registerCommand("RetractIntake",    Commands.runOnce(mIntake::retract, mIntake));
         NamedCommands.registerCommand("IntakeSpin",       new IntakeSpin_CMD(mIntakeMotors));
         NamedCommands.registerCommand("ReverseIntake",    new ReverseIntakeSpin_CMD(mIntakeMotors));
 
-        // Transfer
-        NamedCommands.registerCommand("Transfer",         new Transfer_CMD(mTransfer));
-        NamedCommands.registerCommand("ReverseTransfer",  new ReverseTransfer_CMD(mTransfer));
-
-        // Rollers
-        NamedCommands.registerCommand("RollerSpin",       new RollerSpin_CMD(mRollers));
-        NamedCommands.registerCommand("ReverseRoller",    new ReverseRollerSpin_CMD(mRollers));
-
         // Groups
         NamedCommands.registerCommand("Collect",
-            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer));
+            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer).withTimeout(10));
+        NamedCommands.registerCommand("Transfer",
+            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer).withTimeout(10));
 
         // Turret
         NamedCommands.registerCommand("TurretAimHub",
@@ -209,8 +202,8 @@ public class RobotContainer {
         // INTAKE RETRACT ON ENABLE
         // Solenoids can't fire while disabled, so retract here when the robot enables.
         // =========================
-        RobotModeTriggers.autonomous().onTrue(Commands.runOnce(mIntake::retract, mIntake));
-        RobotModeTriggers.teleop().onTrue(Commands.runOnce(mIntake::retract, mIntake));
+        RobotModeTriggers.autonomous().onTrue(Commands.runOnce(mIntake::retract));
+        RobotModeTriggers.teleop().onTrue(Commands.runOnce(mIntake::retract));
 
         // =========================
         // AUTON — aim + shooter always running for the full autonomous period
@@ -218,10 +211,6 @@ public class RobotContainer {
         // =========================
         RobotModeTriggers.autonomous().whileTrue(
             new AutonAimAndShoot_CMD(mTurretAim, mShooter, drivetrain)
-        );
-
-        RobotModeTriggers.autonomous().whileTrue(
-            new IntakeSpin_CMD(mIntakeMotors)
         );
 
         // =========================
@@ -250,9 +239,8 @@ public class RobotContainer {
         // =========================
         // BUTTONS
         // =========================
-        joystick.x().toggleOnTrue(mShooterSpin_CMD);
+        joystick.square().toggleOnTrue(mShooterSpin_CMD);
 
-        // POV left: toggle hub aim on/off
         // POV right: toggle auto aim — on = aiming, off = motor coasts (disabled)
         joystick.povRight().toggleOnTrue(mTurretAimAtHub_CMD);
 
@@ -264,27 +252,24 @@ public class RobotContainer {
             drivetrain.runOnce(drivetrain::seedFieldCentric)
         );
 
-        joystick.y().onTrue(mtoggle_intake_CMD);
+        joystick.triangle().onTrue(mtoggle_intake_CMD);
 
-        joystick.rightBumper().toggleOnTrue(mIntakeSpin_CMD);
+        joystick.R1().toggleOnTrue(mIntakeSpin_CMD);
 
-        joystick.leftBumper().whileTrue(mLeftBumperGroup);
+        joystick.L1().whileTrue(mLeftBumperGroup);
 
-        joystick.b().whileTrue(mReverseIntakeSpin_CMD);
-        joystick.b().whileTrue(mReverseRollerSpin_CMD);
-        joystick.b().whileTrue(mReverseTransfer_CMD);
+        joystick.circle().whileTrue(mReverseIntakeSpin_CMD);
+        joystick.circle().whileTrue(mReverseRollerSpin_CMD);
+        joystick.circle().whileTrue(mReverseTransfer_CMD);
 
-        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-
+        joystick.cross().whileTrue(drivetrain.applyRequest(() -> brake));
 
         // =========================
         // HARD POSE RESET FROM VISION
-        // Start button: instantly snap odometry to the camera's pose estimate
+        // Options button: instantly snap odometry to the camera's pose estimate
         // when at least 2 tags are visible with high confidence.
-        // Use this when you know the robot is stationary and tags are clearly
-        // in view — e.g. at the start of a match or after a collision.
         // =========================
-        joystick.start().onTrue(Commands.runOnce(() ->
+        joystick.options().onTrue(Commands.runOnce(() ->
             vision.getHighConfidenceEstimate()
                   .ifPresent(drivetrain::hardResetPoseFromVision)
         ));
