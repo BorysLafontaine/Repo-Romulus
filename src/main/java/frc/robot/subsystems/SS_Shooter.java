@@ -186,7 +186,7 @@ public class SS_Shooter extends SubsystemBase {
         SmartDashboard.putNumber ("Shooter/CurrentRPM", currentRPM);
         SmartDashboard.putNumber ("Shooter/ErrorRPM",   errorRPM);
         SmartDashboard.putBoolean("Shooter/AtSpeed",    isAtSpeed());
-        SmartDashboard.putBoolean("Shooter/Active",     targetRPM > 10.0);
+        SmartDashboard.putBoolean("Shooter/Shooter Active",     targetRPM > 10.0);
 
         // Graph-friendly: both on the same key namespace so Elastic can overlay them
         SmartDashboard.putNumber("Shooter/Graph/TargetRPM",  targetRPM);

@@ -44,9 +44,9 @@ public class SS_TurretAim extends SubsystemBase {
     // =========================
     // PID / FEEDFORWARD — tunable via SmartDashboard at runtime
     // =========================
-    private static final double DEFAULT_kP         = 100.0;
-    private static final double DEFAULT_kI         =   0.0;
-    private static final double DEFAULT_kD         =   5.0;
+    private static final double DEFAULT_kP         = 85.0;
+    private static final double DEFAULT_kI         =   0.2;
+    private static final double DEFAULT_kD         =   3.0;
     private static final double DEFAULT_kS         =   0.25;
     private static final double DEFAULT_kV         =   0.10;
     private static final double DEFAULT_CRUISE_RPS =   120.0;
@@ -59,12 +59,12 @@ public class SS_TurretAim extends SubsystemBase {
     // Prevents constant micro-corrections that cause jitter.
     // Tunable at runtime via SmartDashboard.
     // =========================
-    private static final double DEFAULT_DEADZONE_DEG = 1.5;
+    private static final double DEFAULT_DEADZONE_DEG = 0.5;
 
     // =========================
     // ON-TARGET TOLERANCE (for isOnTarget() / shooting gate)
     // =========================
-    public static final double ON_TARGET_DEG = 3;
+    public static final double ON_TARGET_DEG = 1;
 
     // =========================
     // MOTOR + REQUESTS
@@ -255,6 +255,6 @@ public class SS_TurretAim extends SubsystemBase {
         SmartDashboard.putNumber ("Turret/StatorCurrent", statorA);
         SmartDashboard.putNumber ("Turret/SupplyVoltage", supplyV);
         SmartDashboard.putBoolean("Turret/OnTarget",      onTarget);
-        SmartDashboard.putBoolean("Turret/Active",        aimActive);
+        SmartDashboard.putBoolean("Turret/Turret Active", aimActive);
     }
 }

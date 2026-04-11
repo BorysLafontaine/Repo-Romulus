@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "Left Trench Start 1"
+                  "pathName": "Right Trench Start 1"
                 }
               },
               {
@@ -34,13 +34,13 @@
                     {
                       "type": "path",
                       "data": {
-                        "pathName": "Left Trench Start 2"
+                        "pathName": "Right Trench Start 2"
                       }
                     },
                     {
                       "type": "path",
                       "data": {
-                        "pathName": "Left Trench Shoot 1"
+                        "pathName": "Right Trench Shoot 1"
                       }
                     }
                   ]
@@ -81,12 +81,6 @@
           }
         },
         {
-          "type": "wait",
-          "data": {
-            "waitTime": 0.25
-          }
-        },
-        {
           "type": "deadline",
           "data": {
             "commands": [
@@ -97,7 +91,13 @@
                     {
                       "type": "path",
                       "data": {
-                        "pathName": "Left Trench Refuel"
+                        "pathName": "Right Trench Refuel"
+                      }
+                    },
+                    {
+                      "type": "path",
+                      "data": {
+                        "pathName": "Right Trench Shoot 2"
                       }
                     }
                   ]
@@ -110,18 +110,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Left Trench Shoot 2"
-          }
-        },
-        {
-          "type": "wait",
-          "data": {
-            "waitTime": 0.25
           }
         },
         {

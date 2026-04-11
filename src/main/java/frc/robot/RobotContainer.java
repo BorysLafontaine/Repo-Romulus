@@ -138,9 +138,9 @@ public class RobotContainer {
 
         // Groups
         NamedCommands.registerCommand("Collect",
-            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer).withTimeout(10));
+            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer).withTimeout(4));
         NamedCommands.registerCommand("Transfer",
-            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer).withTimeout(10));
+            new LeftBumperGroup_CMD(mIntakeMotors, mRollers, mTransfer).withTimeout(4));
 
         // Turret
         NamedCommands.registerCommand("TurretAimHub",
@@ -197,13 +197,6 @@ public class RobotContainer {
                 Logger.recordOutput("Vision/AvgDist",  e.avgDistanceMeters());
             });
         });
-
-        // =========================
-        // INTAKE RETRACT ON ENABLE
-        // Solenoids can't fire while disabled, so retract here when the robot enables.
-        // =========================
-        RobotModeTriggers.autonomous().onTrue(Commands.runOnce(mIntake::retract));
-        RobotModeTriggers.teleop().onTrue(Commands.runOnce(mIntake::retract));
 
         // =========================
         // AUTON — aim + shooter always running for the full autonomous period

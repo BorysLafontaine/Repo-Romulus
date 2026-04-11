@@ -5,9 +5,15 @@
     "data": {
       "commands": [
         {
+          "type": "named",
+          "data": {
+            "name": "RetractIntake"
+          }
+        },
+        {
           "type": "path",
           "data": {
-            "pathName": "Backward path M"
+            "pathName": "Middle Start"
           }
         },
         {

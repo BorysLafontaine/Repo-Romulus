@@ -23,6 +23,6 @@ public final class Constants {
     public static final double RollerSpeed = 1.0;
     public static final double IRollerSpeed = 1.0;
     public static final double IRollerSpeedInv = -1.0;
-    public static final double TransferSpeed = -0.75;
+    public static final double TransferSpeed = -1.0;
   }
 }

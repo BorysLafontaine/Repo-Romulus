@@ -13,10 +13,12 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 public class SS_IntakeMotors extends SubsystemBase {
 
   private final TalonFX m_IRollerMotor;
+  private boolean Intake = false;
 
   /** Creates a new SS_Shooter. */
   public SS_IntakeMotors() {
     m_IRollerMotor = new TalonFX(20);
+    Intake = true;
   }
 
   public void SpinIRoller(){
@@ -30,12 +32,14 @@ public class SS_IntakeMotors extends SubsystemBase {
 
   public void stopIRoller(){
      m_IRollerMotor.stopMotor();
+     Intake = false;
   }
 
   @Override
   public void periodic() {
     SmartDashboard.putBoolean("Intake/RollerSpinning",
         Math.abs(m_IRollerMotor.getVelocity().getValueAsDouble()) > 0.5);
+    SmartDashboard.putBoolean("Intake active", Intake);
   }
 
 
